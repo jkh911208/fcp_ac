@@ -4,6 +4,11 @@ Running state of the project. Read this first after a break — it is meant to b
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
 **Last updated:** 2026-09-09 · **Current milestone:** M0 done, M1 next.
+**Repo:** <https://github.com/jkh911208/fcp_ac> · **Site:** <https://jkh911208.github.io/fcp_ac/>
+
+> Bootstrap note: this first commit was made directly on `main` in the main working tree, because
+> the repo and its remote did not exist yet. From M1 on, the rule in `CLAUDE.md` applies —
+> every change is cut as a worktree off `origin/main` and lands through a PR.
 
 ## Where it stands
 
@@ -29,8 +34,12 @@ Smoke run, 18.6s of synthesized Korean speech (`say -v Yuna`, no copyright encum
   - `WhisperKitEngine` — model download into `~/Library/Application Support/FCPCaption/models`,
     progress, cancellation. Model identifiers verified against the Hugging Face repo listing.
 - **`fcpcaption-cli`** — the M0 spike tool, and the fastest way to re-check quality later.
-- **Landing page** — `site/index.html`, bilingual, reads the latest release from the GitHub API
-  (currently renders the honest "no build published yet" state, since there are no releases).
+- **Landing page** — live at <https://jkh911208.github.io/fcp_ac/>, deployed from `site/` by
+  `pages.yml`. Bilingual (KO default), reads the latest release from the GitHub API and links its
+  `.dmg` asset; with no releases published it renders the honest "no build published yet" state.
+- **Verified after push:** CI green on `macos-15`, Pages deployed, and a fresh `git clone` of the
+  repo builds and passes all 23 tests — which is what caught a `.gitignore` `Models/` rule that had
+  silently excluded `Sources/FCPCaptionCore/Models/` from the first commit.
 
 ## Not done / open questions
 
