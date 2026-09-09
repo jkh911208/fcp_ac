@@ -46,3 +46,22 @@ Exported from the same Final Cut Pro project with **File ▸ Export Captions…*
 | Drop frame | `ttp:dropMode="nonDrop"`, matching the sequence's `tcFormat="NDF"` |
 | Line breaks | `<br/>`. FCP writes one after the last line too |
 | Styling | a single `<style xml:id="normal">` and one `<region xml:id="bottom">` at `origin="0% 85%"`, `extent="100% 15%"` |
+
+## `title_subtitle.fcpxml`
+
+Exported from Final Cut Pro 12.3: the same project with one of FCP's built-in **Titles ▸ Subtitles
+▸ Subtitle** titles on the timeline. Same redactions as above.
+
+Captured because Final Cut Pro's caption inspector offers no font control while its Subtitle title
+offers every one, so the app has to be able to write titles as well as captions.
+
+### What it settled
+
+| Question | Answer from this file |
+|---|---|
+| The template's effect `uid` | `.../Titles.localized/Subtitles.localized/Subtitle.localized/Subtitle.moti` — **the leading `...` is literal**, not an elision. Guessing a path here would have failed exactly the way `iTT?captions.ko` would have |
+| Where a title lives | a `<title>` child of the `<asset-clip>` with `lane="1"`, the same anchored-item position as a caption |
+| Its shape | `<text><text-style ref="…"></text>` plus a sibling `<text-style-def>` — identical to a caption's |
+| Type scale | **`fontSize="100"`**, against a caption's `13`. The two are not on the same scale, so a size cannot simply be carried across |
+| Internal `start` | `216216000/60000s` — exactly 216000 frames, i.e. one hour of timecode. A caption's was 215784 frames. Different conventions for the same idea |
+| Defaults FCP wrote | `font="Helvetica Neue" fontSize="100" fontColor="1 1 1 1" bold="1" alignment="center" lineSpacing="22"` |
