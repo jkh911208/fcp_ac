@@ -1,0 +1,27 @@
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+
+# SwiftPM
+.build/
+.swiftpm/
+Package.resolved.local
+
+# Worktrees (kept inside the repo dir, never committed)
+.worktrees/
+
+# Secrets — API keys live in the Keychain, never on disk
+*.p8
+*.p12
+.env
+
+# Local test media (large, and often not ours to ship). Downloaded transcription models live in
+# ~/Library/Application Support/FCPCaption/models, never in the repo — do not add a `Models/`
+# rule here: it also matches Sources/FCPCaptionCore/Models/.
+Fixtures/media/

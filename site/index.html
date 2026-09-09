@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FCPCaption — Final Cut Pro 한국어 자동 자막</title>
+<meta name="description" content="Final Cut Pro 사이드바에서 바로 만드는 한국어 자동 자막. 온디바이스 전사, 무료, 오픈소스.">
+<meta property="og:title" content="FCPCaption">
+<meta property="og:description" content="Final Cut Pro를 떠나지 않고 만드는 한국어 자동 자막. 무료·오픈소스.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💬</text></svg>">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #fbfaf9;
+    --bg-raised: #ffffff;
+    --bg-sunken: #f3f1ee;
+    --text: #1c1a18;
+    --text-dim: #5e5851;
+    --line: #e2ddd6;
+    --accent: #c2410c;
+    --accent-soft: #fff2ea;
+    --shadow: 0 1px 2px rgba(28, 26, 24, .06), 0 8px 24px -12px rgba(28, 26, 24, .18);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131211;
+      --bg-raised: #1c1a19;
+      --bg-sunken: #191716;
+      --text: #f2efec;
+      --text-dim: #a8a099;
+      --line: #302c2a;
+      --accent: #ff8a4c;
+      --accent-soft: #2a1a10;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard",
+          "Segoe UI", system-ui, sans-serif;
+    letter-spacing: -0.005em;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px; }
+  a { color: var(--accent); }
+
+  /* Header */
+  header { border-bottom: 1px solid var(--line); background: var(--bg); }
+  .bar { display: flex; align-items: center; gap: 16px; height: 60px; }
+  .mark { font-weight: 680; letter-spacing: -0.02em; font-size: 17px; margin-right: auto; }
+  .mark span { color: var(--accent); }
+  .bar a.ghost, .langtoggle button {
+    font: inherit; font-size: 14px; color: var(--text-dim); text-decoration: none;
+    background: none; border: 0; padding: 6px 10px; border-radius: 8px; cursor: pointer;
+  }
+  .bar a.ghost:hover, .langtoggle button:hover { background: var(--bg-sunken); color: var(--text); }
+  .langtoggle { display: flex; border: 1px solid var(--line); border-radius: 9px; padding: 2px; }
+  .langtoggle button[aria-pressed="true"] { background: var(--bg-sunken); color: var(--text); font-weight: 600; }
+
+  /* Hero */
+  .hero { padding: 72px 0 56px; }
+  .badge {
+    display: inline-block; font-size: 12.5px; font-weight: 600; letter-spacing: .01em;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    padding: 4px 11px; border-radius: 999px; margin-bottom: 20px;
+  }
+  h1 { font-size: clamp(34px, 6vw, 52px); line-height: 1.12; letter-spacing: -0.03em; margin: 0 0 18px; font-weight: 700; }
+  .lede { font-size: clamp(17px, 2.2vw, 20px); color: var(--text-dim); margin: 0 0 32px; max-width: 34em; }
+
+  /* Download card */
+  .download {
+    background: var(--bg-raised); border: 1px solid var(--line); border-radius: var(--radius);
+    box-shadow: var(--shadow); padding: 22px 24px; display: flex; flex-wrap: wrap;
+    align-items: center; gap: 16px 20px;
+  }
+  .download .info { min-width: 0; flex: 1 1 220px; }
+  .download .title { font-weight: 640; font-size: 16px; margin: 0 0 3px; }
+  .download .meta { color: var(--text-dim); font-size: 14px; margin: 0; font-variant-numeric: tabular-nums; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px; background: var(--accent); color: #fff;
+    text-decoration: none; font-weight: 620; font-size: 15px; padding: 11px 20px; border-radius: 10px;
+    border: 0; white-space: nowrap;
+  }
+  .btn:hover { filter: brightness(1.07); }
+  .btn.secondary { background: transparent; color: var(--text); border: 1px solid var(--line); }
+  .skeleton { color: transparent; background: var(--bg-sunken); border-radius: 6px; user-select: none; }
+
+  /* Sections */
+  section { padding: 56px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 24px; letter-spacing: -0.02em; margin: 0 0 10px; font-weight: 680; }
+  .sub { color: var(--text-dim); margin: 0 0 28px; max-width: 40em; }
+
+  .split { display: grid; gap: 16px; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 640px) { .split { grid-template-columns: 1fr; } }
+  .card { background: var(--bg-raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+  .card h3 { margin: 0 0 8px; font-size: 15px; font-weight: 640; letter-spacing: -0.01em; }
+  .card p { margin: 0; color: var(--text-dim); font-size: 14.5px; }
+  .card.bad h3 { color: var(--text-dim); }
+  .card.good { border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); }
+  .card.good h3 { color: var(--accent); }
+
+  ol.steps { counter-reset: step; list-style: none; padding: 0; margin: 0; }
+  ol.steps li {
+    counter-increment: step; position: relative; padding: 0 0 22px 46px;
+    border-left: 2px solid var(--line); margin-left: 15px;
+  }
+  ol.steps li:last-child { border-left-color: transparent; padding-bottom: 0; }
+  ol.steps li::before {
+    content: counter(step); position: absolute; left: -16px; top: -2px; width: 30px; height: 30px;
+    display: grid; place-items: center; border-radius: 50%; background: var(--bg-sunken);
+    border: 1px solid var(--line); font-size: 13px; font-weight: 650; color: var(--text-dim);
+  }
+  ol.steps strong { font-weight: 640; }
+  ol.steps p { margin: 3px 0 0; color: var(--text-dim); font-size: 14.5px; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+  th, td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-weight: 620; color: var(--text-dim); font-size: 13px; letter-spacing: .02em; text-transform: uppercase; }
+  td:first-child { white-space: nowrap; font-weight: 600; width: 1%; }
+  .done { color: var(--accent); }
+
+  pre {
+    background: var(--bg-sunken); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; font-size: 13.5px; line-height: 1.6;
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  }
+  ul.plain { margin: 0; padding-left: 20px; color: var(--text-dim); font-size: 15px; }
+  ul.plain li { margin-bottom: 6px; }
+  footer { border-top: 1px solid var(--line); padding: 32px 0 56px; color: var(--text-dim); font-size: 14px; }
+  footer a { color: var(--text-dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap bar">
+    <div class="mark">FCP<span>Caption</span></div>
+    <a class="ghost" href="https://github.com/jkh911208/fcp_ac">GitHub</a>
+    <div class="langtoggle" role="group" aria-label="Language">
+      <button type="button" data-lang="ko" aria-pressed="true">한국어</button>
+      <button type="button" data-lang="en" aria-pressed="false">EN</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap hero">
+    <div class="badge" data-en="In development — M0 done">개발 중 — M0 완료</div>
+    <h1 data-en="Korean auto-captions, without leaving Final Cut Pro.">Final Cut Pro를 떠나지 않고<br>만드는 한국어 자동 자막.</h1>
+    <p class="lede" data-en="Drag a clip onto the sidebar panel. The audio is transcribed on your Mac and the Korean captions land on the timeline&rsquo;s caption lane, attached to the clip they came from. Free, open source, no account.">클립을 사이드바 패널로 끌어다 놓으면, 이 Mac에서 음성을 전사해 한국어 자막을 원본 클립에 연결된 채로 타임라인 캡션 레인에 올려 줍니다. 무료, 오픈소스, 계정 없음.</p>
+
+    <div class="download" id="release">
+      <div class="info">
+        <p class="title" id="release-title" data-en="Checking the latest release&hellip;">최신 릴리스 확인 중&hellip;</p>
+        <p class="meta" id="release-meta"><span class="skeleton">불러오는 중입니다</span></p>
+      </div>
+      <div id="release-actions" hidden>
+        <a class="btn" id="release-download" href="https://github.com/jkh911208/fcp_ac/releases/latest" data-en="Download">다운로드</a>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <div class="wrap">
+      <h2 data-en="Why this exists">왜 만들었나</h2>
+      <p class="sub" data-en="Final Cut Pro 12.3 can transcribe captions — in US English only.">Final Cut Pro 12.3에도 자막 전사 기능이 있습니다. 미국 영어 전용이라는 점만 빼면요.</p>
+      <div class="split">
+        <div class="card bad">
+          <h3 data-en="Today">지금</h3>
+          <p data-en="Feed Korean speech to FCP&rsquo;s built-in transcription and an English model romanizes sounds it doesn&rsquo;t understand. The workaround is a round trip: transcribe elsewhere, export SRT, import back, fix the timing.">한국어 음성을 FCP 내장 전사에 넣으면 영어 모델이 알아듣지 못한 소리를 로마자로 옮겨 놓습니다. 그래서 다른 앱에서 전사하고, SRT로 내보내고, 다시 임포트하고, 타이밍을 손보는 왕복 작업을 하게 됩니다.</p>
+        </div>
+        <div class="card good">
+          <h3 data-en="With FCPCaption">FCPCaption에서는</h3>
+          <p data-en="A panel in the FCP sidebar. Drag, wait for the progress bar, done — the captions are already on the timeline, in the caption lane, attached to the clip.">FCP 사이드바의 패널 하나. 끌어다 놓고 진행률이 끝나면 그걸로 끝입니다 — 자막은 이미 타임라인 캡션 레인에, 클립에 연결된 채로 올라와 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-en="How it works">동작 방식</h2>
+      <p class="sub" data-en="Four steps, none of which ask you to switch apps.">앱을 바꿔 탈 일 없는 네 단계.</p>
+      <ol class="steps">
+        <li>
+          <strong data-en="Drag the clip onto the panel">클립을 패널로 드래그</strong>
+          <p data-en="Final Cut Pro hands the extension the clip&rsquo;s FCPXML — media path, timeline position, frame rate.">Final Cut Pro가 클립의 FCPXML을 넘겨줍니다 — 미디어 경로, 타임라인 위치, 프레임레이트.</p>
+        </li>
+        <li>
+          <strong data-en="Audio is extracted with AVFoundation">AVFoundation으로 오디오 추출</strong>
+          <p data-en="Straight from the original media. No ffmpeg, no re-encode round trip, no temporary export you have to clean up.">원본 미디어에서 바로. ffmpeg도, 재인코딩 왕복도, 나중에 지워야 할 임시 파일도 없습니다.</p>
+        </li>
+        <li>
+          <strong data-en="Transcribed on this Mac — or with your own API key">이 Mac에서 전사 — 또는 본인 API 키로</strong>
+          <p data-en="WhisperKit runs large-v3-turbo on the Neural Engine; the model downloads once and then nothing leaves the machine. Prefer not to spend the compute? Point it at OpenRouter with your own key.">WhisperKit이 large-v3-turbo를 Neural Engine에서 돌립니다. 모델은 한 번만 내려받고, 그 뒤로는 아무것도 기기를 떠나지 않습니다. 로컬 연산을 아끼고 싶다면 본인 OpenRouter 키를 쓰면 됩니다.</p>
+        </li>
+        <li>
+          <strong data-en="Split by Korean subtitle rules, then written back to FCP">한국어 자막 규칙으로 나눠 FCP에 되돌려쓰기</strong>
+          <p data-en="18 characters a line, two lines, 1&ndash;6 seconds, breaking on silence and punctuation and never mid-어절. Every number is adjustable in Settings.">한 줄 18자, 최대 두 줄, 1~6초. 침묵과 문장 부호에서 끊고 어절은 중간에서 자르지 않습니다. 모든 값은 설정에서 조정할 수 있습니다.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <h2 data-en="Requirements">요구 사항</h2>
+          <ul class="plain">
+            <li data-en="Apple silicon Mac (M-series). Intel is out of scope — the model runs on the Neural Engine."><strong>Apple silicon</strong> Mac (M 시리즈). 인텔은 범위 밖입니다 — 모델이 Neural Engine에서 돌아갑니다.</li>
+            <li data-en="macOS 15 (Sequoia) or later">macOS 15 (Sequoia) 이상</li>
+            <li data-en="Final Cut Pro 12.x">Final Cut Pro 12.x</li>
+            <li data-en="For the cloud engine only: your own OpenRouter API key">클라우드 엔진을 쓸 때만: 본인 OpenRouter API 키</li>
+          </ul>
+        </div>
+        <div>
+          <h2 data-en="Privacy">개인정보</h2>
+          <ul class="plain">
+            <li data-en="No telemetry, no analytics, no account.">텔레메트리도, 애널리틱스도, 계정도 없습니다.</li>
+            <li data-en="In local mode the app makes no network request except the one-time model download.">로컬 모드에서는 모델 다운로드 한 번 외에 네트워크 요청을 하지 않습니다.</li>
+            <li data-en="Your API key is stored in the macOS Keychain and never written to a log.">API 키는 macOS Keychain에만 저장되고 로그에는 남지 않습니다.</li>
+            <li data-en="MIT licensed — the whole thing is readable on GitHub.">MIT 라이선스 — 전부 GitHub에서 읽을 수 있습니다.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-en="Roadmap">진행 상황</h2>
+      <p class="sub" data-en="Built in the open, one milestone at a time.">공개된 채로, 마일스톤 하나씩.</p>
+      <table>
+        <thead>
+          <tr><th data-en="Stage">단계</th><th data-en="Deliverable">산출물</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="done">M0 ✅</td><td data-en="Transcription spike: file → WhisperKit → .srt, Korean caption rules under test">전사 스파이크: 파일 → WhisperKit → .srt, 한국어 자막 규칙 테스트</td></tr>
+          <tr><td>M1</td><td data-en="Workflow Extension shell: a panel in the FCP sidebar that parses dropped FCPXML">Extension 껍데기: FCP 사이드바 패널, 드롭된 FCPXML 파싱</td></tr>
+          <tr><td>M2</td><td data-en="Import spike: can captions attach to clips in an already-open project?">임포트 스파이크: 이미 열린 프로젝트의 클립에 캡션을 붙일 수 있는가</td></tr>
+          <tr><td>M3</td><td data-en="Local end to end: drag → transcribe → captions on the timeline">로컬 E2E: 드래그 → 전사 → 타임라인에 자막</td></tr>
+          <tr><td>M4</td><td data-en="OpenRouter engine, Keychain, Settings">OpenRouter 엔진, Keychain, 설정 화면</td></tr>
+          <tr><td>M5</td><td data-en="Signed and notarized dmg, GitHub Actions build">서명·공증 dmg, GitHub Actions 빌드</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 data-en="Try it before the app exists">앱이 나오기 전에 먼저 써보기</h2>
+      <p class="sub" data-en="The transcription half already works as a command-line tool. It writes an .srt next to any audio or video file.">전사 부분은 이미 커맨드라인 도구로 동작합니다. 아무 오디오·비디오 파일 옆에 .srt를 만들어 줍니다.</p>
+      <pre><code>git clone git@github.com:jkh911208/fcp_ac.git
+cd fcp_ac/FCPCaptionCore
+swift run -c release fcpcaption-cli /path/to/clip.mov --language ko</code></pre>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>MIT · <a href="https://github.com/jkh911208/fcp_ac">github.com/jkh911208/fcp_ac</a></p>
+    <p data-en="Not affiliated with Apple. Final Cut Pro is a trademark of Apple Inc.">Apple과 무관한 개인 프로젝트입니다. Final Cut Pro는 Apple Inc.의 상표입니다.</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  const REPO = "jkh911208/fcp_ac";
+
+  /* ---------- language ---------- */
+  // Korean is what the HTML already says, so the first paint needs no swap and never flickers.
+  const swappable = document.querySelectorAll("[data-en]");
+  swappable.forEach(el => el.dataset.ko = el.innerHTML);
+
+  function setLang(lang) {
+    document.documentElement.lang = lang;
+    swappable.forEach(el => { el.innerHTML = lang === "en" ? el.dataset.en : el.dataset.ko; });
+    document.querySelectorAll(".langtoggle button").forEach(b => {
+      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+    });
+    try { localStorage.setItem("lang", lang); } catch (e) { /* private window */ }
+    renderRelease();
+  }
+  document.querySelectorAll(".langtoggle button").forEach(b => {
+    b.addEventListener("click", () => setLang(b.dataset.lang));
+  });
+  try {
+    const stored = localStorage.getItem("lang");
+    if (stored === "en") setLang("en");
+  } catch (e) { /* ignore */ }
+
+  /* ---------- latest release ---------- */
+  // Three real states — loading, a published release, or none yet. "None yet" is a state we
+  // render honestly, not an error we hide.
+  let release = { state: "loading" };
+
+  const T = {
+    ko: {
+      loading: ["최신 릴리스 확인 중…", "불러오는 중입니다"],
+      noneTitle: "아직 배포된 빌드가 없습니다",
+      noneMeta: "M5에서 서명·공증된 dmg를 올릴 예정입니다. 그때까지는 소스에서 빌드해 주세요.",
+      noneBtn: "GitHub에서 보기",
+      failTitle: "릴리스 정보를 불러오지 못했습니다",
+      failMeta: "GitHub Releases 페이지에서 직접 확인해 주세요.",
+      failBtn: "Releases 열기",
+      btn: "다운로드",
+      meta: (v, d, s) => `${v} · ${d}${s ? " · " + s : ""} · Apple silicon`
+    },
+    en: {
+      loading: ["Checking the latest release…", "Loading"],
+      noneTitle: "No build published yet",
+      noneMeta: "A signed, notarized dmg ships with M5. Until then, build it from source.",
+      noneBtn: "View on GitHub",
+      failTitle: "Couldn't load release information",
+      failMeta: "Check the GitHub Releases page directly.",
+      failBtn: "Open Releases",
+      btn: "Download",
+      meta: (v, d, s) => `${v} · ${d}${s ? " · " + s : ""} · Apple silicon`
+    }
+  };
+
+  const titleEl = document.getElementById("release-title");
+  const metaEl = document.getElementById("release-meta");
+  const actionsEl = document.getElementById("release-actions");
+  const downloadEl = document.getElementById("release-download");
+
+  function formatSize(bytes) {
+    if (!bytes) return "";
+    return (bytes / 1048576).toFixed(0) + " MB";
+  }
+
+  function renderRelease() {
+    const t = T[document.documentElement.lang === "en" ? "en" : "ko"];
+    if (release.state === "loading") {
+      titleEl.textContent = t.loading[0];
+      metaEl.innerHTML = '<span class="skeleton">' + t.loading[1] + "</span>";
+      actionsEl.hidden = true;
+      return;
+    }
+    actionsEl.hidden = false;
+    if (release.state === "ready") {
+      titleEl.textContent = release.name;
+      metaEl.textContent = t.meta(release.version, release.date, release.size);
+      downloadEl.textContent = t.btn;
+      downloadEl.href = release.url;
+    } else if (release.state === "none") {
+      titleEl.textContent = t.noneTitle;
+      metaEl.textContent = t.noneMeta;
+      downloadEl.textContent = t.noneBtn;
+      downloadEl.href = "https://github.com/" + REPO;
+    } else {
+      titleEl.textContent = t.failTitle;
+      metaEl.textContent = t.failMeta;
+      downloadEl.textContent = t.failBtn;
+      downloadEl.href = "https://github.com/" + REPO + "/releases";
+    }
+  }
+
+  fetch("https://api.github.com/repos/" + REPO + "/releases/latest", {
+    headers: { Accept: "application/vnd.github+json" }
+  })
+    .then(response => {
+      if (response.status === 404) return null;              // no release published yet
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      return response.json();
+    })
+    .then(data => {
+      if (!data) { release = { state: "none" }; return; }
+      const assets = data.assets || [];
+      // Prefer the dmg; fall back to the first asset, then to the release page itself.
+      const asset = assets.find(a => /\.dmg$/i.test(a.name)) || assets[0];
+      release = {
+        state: "ready",
+        name: asset ? asset.name : (data.name || data.tag_name),
+        version: data.tag_name,
+        date: new Date(data.published_at).toLocaleDateString(
+          document.documentElement.lang === "en" ? "en-US" : "ko-KR",
+          { year: "numeric", month: "short", day: "numeric" }
+        ),
+        size: asset ? formatSize(asset.size) : "",
+        url: asset ? asset.browser_download_url : data.html_url
+      };
+    })
+    .catch(() => { release = { state: "error" }; })
+    .finally(renderRelease);   // success or failure, the loading state always ends
+})();
+</script>
+</body>
+</html>
