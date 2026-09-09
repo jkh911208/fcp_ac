@@ -34,8 +34,8 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 onOpenInFinalCut: { url in
                     MainActor.assumeIsolated { Self.openInFinalCutPro(url, model: model) }
                 },
-                onSaveCaptionFile: { contents, name in
-                    MainActor.assumeIsolated { Self.saveCaptionFile(contents, named: name) }
+                onSaveCaptionFile: { contents, baseName in
+                    MainActor.assumeIsolated { Self.saveCaptionFile(contents, baseName: baseName) }
                 }
             ))
             panel.translatesAutoresizingMaskIntoConstraints = false
@@ -95,9 +95,11 @@ final class FCPCaptionExtensionViewController: NSViewController {
     /// can write without asking is its own container — which is exactly where nobody can find a
     /// file from Final Cut Pro's import dialog.
     @MainActor
-    private static func saveCaptionFile(_ contents: String, named name: String) {
+    private static func saveCaptionFile(_ contents: String, baseName: String) {
         let panel = NSSavePanel()
-        panel.nameFieldStringValue = name
+        // No extension here: the panel appends one from allowedContentTypes, and giving it both
+        // produces "IMG_2194.itt.itt".
+        panel.nameFieldStringValue = baseName
         panel.allowedContentTypes = [.init(filenameExtension: "itt") ?? .xml]
         panel.canCreateDirectories = true
         panel.message = "저장한 뒤 Final Cut Pro에서 File ▸ Import ▸ Captions… 로 여세요."

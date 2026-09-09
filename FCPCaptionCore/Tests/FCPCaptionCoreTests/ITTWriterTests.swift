@@ -72,7 +72,31 @@ struct ITTWriterTests {
     @Test func twoLinesBecomeOneBreak() {
         let itt = ITTWriter().string(from: [Caption(lines: ["오늘은 날씨가", "정말 좋네요"], start: 0, end: 2)],
                                      frameDuration: frame)
-        #expect(itt.contains("오늘은 날씨가<br/>정말 좋네요<br/>"))
+        #expect(itt.contains(">오늘은 날씨가<br/>정말 좋네요</p>"))
+    }
+
+    /// A caption written by this project ends with its last line, not with a line break.
+    ///
+    /// The reference export ends `안녕하세요<br/>` because the editor had typed a newline into that
+    /// caption. Copying the trailing break added an empty third line to every caption, which is
+    /// one more than Final Cut Pro allows — and it draws those captions in red.
+    @Test func thereIsNoTrailingLineBreak() {
+        let itt = ITTWriter().string(from: [
+            Caption(lines: ["한 줄"], start: 0, end: 2),
+            Caption(lines: ["첫 줄", "둘째 줄"], start: 3, end: 5),
+        ], frameDuration: frame)
+        #expect(!itt.contains("<br/></p>"))
+        #expect(itt.contains(">한 줄</p>"))
+    }
+
+    @Test func noCaptionExceedsTwoRenderedLines() throws {
+        let itt = ITTWriter().string(from: [Caption(lines: ["첫 줄", "둘째 줄"], start: 0, end: 2)],
+                                     frameDuration: frame)
+        let document = try XMLDocument(data: Data(itt.utf8))
+        for paragraph in try document.nodes(forXPath: "//*[local-name()='p']") {
+            let breaks = try paragraph.nodes(forXPath: ".//*[local-name()='br']").count
+            #expect(breaks <= 1, "a caption may hold at most two lines, so at most one break")
+        }
     }
 
     @Test func theStructureMatchesWhatFinalCutWrites() throws {

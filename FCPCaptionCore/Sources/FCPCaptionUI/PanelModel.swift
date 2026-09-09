@@ -37,7 +37,9 @@ public final class PanelModel {
         /// adds to the current timeline instead of bringing a new event and project into the
         /// library, which is what importing FCPXML does.
         public var captionFile: String?
-        public var captionFileName: String
+        /// The suggested file name **without an extension** — a save panel appends its own from
+        /// the allowed content type, and passing "IMG_2194.itt" there produces "IMG_2194.itt.itt".
+        public var captionFileBaseName: String
         /// Captions the editor's own captions were already occupying. Shown when non-zero, because
         /// a caption missing from the timeline with no explanation reads as a bug.
         public var skipped: Int
@@ -49,13 +51,13 @@ public final class PanelModel {
             skipped: Int = 0,
             clipCount: Int = 1,
             captionFile: String? = nil,
-            captionFileName: String = "자막.itt"
+            captionFileBaseName: String = "자막"
         ) {
             self.captionCount = captionCount
             self.clipName = clipName
             self.clipCount = clipCount
             self.captionFile = captionFile
-            self.captionFileName = captionFileName
+            self.captionFileBaseName = captionFileBaseName
             self.output = output
             self.skipped = skipped
         }
@@ -82,6 +84,18 @@ public final class PanelModel {
     private let makePipeline: @Sendable (FCPCaptionSettings) -> CaptionPipeline
     private let deliver: @Sendable (Data, ClipRef) throws -> URL
     private let store: SettingsStore?
+
+    /// A clip name is not a file name: it can hold slashes and colons, and it may already end in
+    /// the extension the save panel is about to add.
+    static func fileBaseName(for clipName: String?) -> String {
+        guard let clipName, !clipName.isEmpty else { return "자막" }
+        var name = clipName
+        for separator in ["/", ":"] {
+            name = name.replacingOccurrences(of: separator, with: "-")
+        }
+        if name.lowercased().hasSuffix(".itt") { name = String(name.dropLast(4)) }
+        return name.isEmpty ? "자막" : name
+    }
 
     public static func label(for settings: FCPCaptionSettings) -> String {
         "이 Mac에서 · \(settings.model.displayName)"
@@ -156,7 +170,7 @@ public final class PanelModel {
                     skipped: result.skipped,
                     clipCount: result.clips.count,
                     captionFile: result.captionFile(language: settings.language ?? "ko"),
-                    captionFileName: "\(first?.name ?? "자막").itt"
+                    captionFileBaseName: Self.fileBaseName(for: first?.name)
                 ))
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next

@@ -7,37 +7,37 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		051C589A86ED3E3211BEE490 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73A32C93F5D92AA708415DED /* Cocoa.framework */; };
-		0D1EC7D3C0B393DF933A2AA2 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 73A32C93F5D92AA708415DED /* Cocoa.framework */; };
-		130864F9475E53501BA574C5 /* FCPCaptionCore in Frameworks */ = {isa = PBXBuildFile; productRef = 3B8490032A9B26A17C17CF1B /* FCPCaptionCore */; };
-		3F186C99060C5BFA3BBED18B /* FCPCaptionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 320A92E8A51AC8F9A5281366 /* FCPCaptionApp.swift */; };
-		3F3AE1945A14A56117396A4A /* FCPCaptionUI in Frameworks */ = {isa = PBXBuildFile; productRef = 0A794C2C2A6BECDEF852574C /* FCPCaptionUI */; };
-		6DAD7203140345D685E55B02 /* FCPCaptionExtensionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4FC4EF603C6DD9D200F53AA /* FCPCaptionExtensionViewController.swift */; };
-		7743C52ADE45AFB8D77D2E42 /* FinalCutPro.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6ACAED355777B6A97BB7C32 /* FinalCutPro.swift */; };
-		8B5B19965869E8B1511913A7 /* CaptionDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 838465778CDB6406AB3A9B98 /* CaptionDropView.swift */; };
-		95032825CB479DCBD18D5B52 /* FCPCaptionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8A374FF1AF497FCAA26420F7 /* FCPCaptionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		B16FB518B97FE316D48781FA /* FCPCaptionUI in Frameworks */ = {isa = PBXBuildFile; productRef = AC9B943D4EC3B7F181809BC5 /* FCPCaptionUI */; };
-		EDA2A5B46065126C7326A5A1 /* FCPCaptionCore in Frameworks */ = {isa = PBXBuildFile; productRef = 8BA106A6165701936848F9BD /* FCPCaptionCore */; };
+		11279BE29003C9F82AD6C542 /* FCPCaptionUI in Frameworks */ = {isa = PBXBuildFile; productRef = 1F71A28F47546E646A9CA411 /* FCPCaptionUI */; };
+		3F9182DDBDCB5D1450372F78 /* FCPCaptionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DE3A8FE3272D7FD3B61B339 /* FCPCaptionApp.swift */; };
+		4B486581FF65ED599BD3FD29 /* FCPCaptionUI in Frameworks */ = {isa = PBXBuildFile; productRef = 4C310AB5310C050E2C22E697 /* FCPCaptionUI */; };
+		5CAC533F5C7667692E83BF52 /* FCPCaptionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 7B16B785995D83724F043324 /* FCPCaptionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7C7B6E3F31D430A44C35801B /* FinalCutPro.swift in Sources */ = {isa = PBXBuildFile; fileRef = EA232FF102F7E7EBD0223900 /* FinalCutPro.swift */; };
+		90D69E25739CB2E6D3B152B1 /* CaptionDropView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C405C10B01907344FDF78F5F /* CaptionDropView.swift */; };
+		956689E67A4781E159C50B1E /* FCPCaptionCore in Frameworks */ = {isa = PBXBuildFile; productRef = F451823748E4FDB7BC821F9B /* FCPCaptionCore */; };
+		A516ECA38C94C40CDBED9C0B /* FCPCaptionCore in Frameworks */ = {isa = PBXBuildFile; productRef = 0121EF59E7F01CA8E2FD29BB /* FCPCaptionCore */; };
+		AB6EB02451A7E012203F8AD9 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15F2E17FA83E4571B781C815 /* Cocoa.framework */; };
+		AB72DE646E434C8DBCE54BD3 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15F2E17FA83E4571B781C815 /* Cocoa.framework */; };
+		F8A7FFB3443761279D1B23C2 /* FCPCaptionExtensionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B9D23C343A057A8F33E3312 /* FCPCaptionExtensionViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		10CA6F0B2610D6D1C1D50FBE /* PBXContainerItemProxy */ = {
+		DF9AAE0DE25DAB51B74357F2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = AA06F678605C7081EA5CDFEA /* Project object */;
+			containerPortal = DB8E26D69EF399659B20CE85 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 57F00296E235CBE97017256D;
+			remoteGlobalIDString = 0D889D83B38C702D91718FBA;
 			remoteInfo = FCPCaptionExtension;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		75F7F0BE79E6AF5026627261 /* Embed Foundation Extensions */ = {
+		44C3652979FA15A56484442B /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				95032825CB479DCBD18D5B52 /* FCPCaptionExtension.appex in Embed Foundation Extensions */,
+				5CAC533F5C7667692E83BF52 /* FCPCaptionExtension.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -45,104 +45,104 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		320A92E8A51AC8F9A5281366 /* FCPCaptionApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FCPCaptionApp.swift; sourceTree = "<group>"; };
-		39A23DBE55FDCA5644C95534 /* FCPCaption.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FCPCaption.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		73A32C93F5D92AA708415DED /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
-		838465778CDB6406AB3A9B98 /* CaptionDropView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptionDropView.swift; sourceTree = "<group>"; };
-		8A374FF1AF497FCAA26420F7 /* FCPCaptionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FCPCaptionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
-		D4FC4EF603C6DD9D200F53AA /* FCPCaptionExtensionViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FCPCaptionExtensionViewController.swift; sourceTree = "<group>"; };
-		D6ACAED355777B6A97BB7C32 /* FinalCutPro.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FinalCutPro.swift; sourceTree = "<group>"; };
+		01F1DB77D26D03681DEF7CFF /* FCPCaption.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FCPCaption.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		15F2E17FA83E4571B781C815 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX15.0.sdk/System/Library/Frameworks/Cocoa.framework; sourceTree = DEVELOPER_DIR; };
+		1B9D23C343A057A8F33E3312 /* FCPCaptionExtensionViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FCPCaptionExtensionViewController.swift; sourceTree = "<group>"; };
+		7B16B785995D83724F043324 /* FCPCaptionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = FCPCaptionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		7DE3A8FE3272D7FD3B61B339 /* FCPCaptionApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FCPCaptionApp.swift; sourceTree = "<group>"; };
+		C405C10B01907344FDF78F5F /* CaptionDropView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CaptionDropView.swift; sourceTree = "<group>"; };
+		EA232FF102F7E7EBD0223900 /* FinalCutPro.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FinalCutPro.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
-		19855BE1881D3E060862921B /* Frameworks */ = {
+		63DA65AEB4EC1E47ABCEA996 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				051C589A86ED3E3211BEE490 /* Cocoa.framework in Frameworks */,
-				EDA2A5B46065126C7326A5A1 /* FCPCaptionCore in Frameworks */,
-				3F3AE1945A14A56117396A4A /* FCPCaptionUI in Frameworks */,
+				AB6EB02451A7E012203F8AD9 /* Cocoa.framework in Frameworks */,
+				A516ECA38C94C40CDBED9C0B /* FCPCaptionCore in Frameworks */,
+				11279BE29003C9F82AD6C542 /* FCPCaptionUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		1DB951EDAAE246A08DE351D7 /* Frameworks */ = {
+		8B32E948A1431B3A00440330 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				0D1EC7D3C0B393DF933A2AA2 /* Cocoa.framework in Frameworks */,
-				130864F9475E53501BA574C5 /* FCPCaptionCore in Frameworks */,
-				B16FB518B97FE316D48781FA /* FCPCaptionUI in Frameworks */,
+				AB72DE646E434C8DBCE54BD3 /* Cocoa.framework in Frameworks */,
+				956689E67A4781E159C50B1E /* FCPCaptionCore in Frameworks */,
+				4B486581FF65ED599BD3FD29 /* FCPCaptionUI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		1B782647F3D817BE2C0D93DD /* Frameworks */ = {
+		038621E26B23A65405850F7B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				7701934182F739621C28934C /* OS X */,
+				C933EA9D7CB26D02A6C089A9 /* OS X */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
-		2D4876642C740426E7989A85 /* FCPCaption */ = {
+		1F69E8A32795A891A8B9E029 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				320A92E8A51AC8F9A5281366 /* FCPCaptionApp.swift */,
+				01F1DB77D26D03681DEF7CFF /* FCPCaption.app */,
+				7B16B785995D83724F043324 /* FCPCaptionExtension.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		28141486E402C3D840156423 /* FCPCaption */ = {
+			isa = PBXGroup;
+			children = (
+				7DE3A8FE3272D7FD3B61B339 /* FCPCaptionApp.swift */,
 			);
 			name = FCPCaption;
 			path = FCPCaption;
 			sourceTree = "<group>";
 		};
-		541538863A1E719FC93BFFC4 = {
+		5BC8D015427A8117DE51472F /* FCPCaptionExtension */ = {
 			isa = PBXGroup;
 			children = (
-				F2B5123BDFE809A9A671856E /* Products */,
-				1B782647F3D817BE2C0D93DD /* Frameworks */,
-				2D4876642C740426E7989A85 /* FCPCaption */,
-				D856082068BF121758906830 /* FCPCaptionExtension */,
-			);
-			sourceTree = "<group>";
-		};
-		7701934182F739621C28934C /* OS X */ = {
-			isa = PBXGroup;
-			children = (
-				73A32C93F5D92AA708415DED /* Cocoa.framework */,
-			);
-			name = "OS X";
-			sourceTree = "<group>";
-		};
-		D856082068BF121758906830 /* FCPCaptionExtension */ = {
-			isa = PBXGroup;
-			children = (
-				D4FC4EF603C6DD9D200F53AA /* FCPCaptionExtensionViewController.swift */,
-				838465778CDB6406AB3A9B98 /* CaptionDropView.swift */,
-				D6ACAED355777B6A97BB7C32 /* FinalCutPro.swift */,
+				1B9D23C343A057A8F33E3312 /* FCPCaptionExtensionViewController.swift */,
+				C405C10B01907344FDF78F5F /* CaptionDropView.swift */,
+				EA232FF102F7E7EBD0223900 /* FinalCutPro.swift */,
 			);
 			name = FCPCaptionExtension;
 			path = FCPCaptionExtension;
 			sourceTree = "<group>";
 		};
-		F2B5123BDFE809A9A671856E /* Products */ = {
+		86B2BA32928219B993C846F7 = {
 			isa = PBXGroup;
 			children = (
-				39A23DBE55FDCA5644C95534 /* FCPCaption.app */,
-				8A374FF1AF497FCAA26420F7 /* FCPCaptionExtension.appex */,
+				1F69E8A32795A891A8B9E029 /* Products */,
+				038621E26B23A65405850F7B /* Frameworks */,
+				28141486E402C3D840156423 /* FCPCaption */,
+				5BC8D015427A8117DE51472F /* FCPCaptionExtension */,
 			);
-			name = Products;
+			sourceTree = "<group>";
+		};
+		C933EA9D7CB26D02A6C089A9 /* OS X */ = {
+			isa = PBXGroup;
+			children = (
+				15F2E17FA83E4571B781C815 /* Cocoa.framework */,
+			);
+			name = "OS X";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		57F00296E235CBE97017256D /* FCPCaptionExtension */ = {
+		0D889D83B38C702D91718FBA /* FCPCaptionExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 3D93E772ABB44A1FAA87AC94 /* Build configuration list for PBXNativeTarget "FCPCaptionExtension" */;
+			buildConfigurationList = 4F62B5F480D56DA61F1EC298 /* Build configuration list for PBXNativeTarget "FCPCaptionExtension" */;
 			buildPhases = (
-				686EF3BEF3D8ABAFBF386444 /* Sources */,
-				19855BE1881D3E060862921B /* Frameworks */,
-				878E5E86F70EFFCBF4AAB23E /* Resources */,
+				F0ED14D0ED191CD757D408D5 /* Sources */,
+				8B32E948A1431B3A00440330 /* Frameworks */,
+				79951B8C7D991654B45944D9 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -150,46 +150,46 @@
 			);
 			name = FCPCaptionExtension;
 			packageProductDependencies = (
-				8BA106A6165701936848F9BD /* FCPCaptionCore */,
-				0A794C2C2A6BECDEF852574C /* FCPCaptionUI */,
+				F451823748E4FDB7BC821F9B /* FCPCaptionCore */,
+				4C310AB5310C050E2C22E697 /* FCPCaptionUI */,
 			);
 			productName = FCPCaptionExtension;
-			productReference = 8A374FF1AF497FCAA26420F7 /* FCPCaptionExtension.appex */;
+			productReference = 7B16B785995D83724F043324 /* FCPCaptionExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
-		F90BC6F56EAAC45FFFE6306A /* FCPCaption */ = {
+		6599E34A14E21881CF2D9AEC /* FCPCaption */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 4403102144201EC4D38BCC28 /* Build configuration list for PBXNativeTarget "FCPCaption" */;
+			buildConfigurationList = CB1CC352F416DD6F579F2FD3 /* Build configuration list for PBXNativeTarget "FCPCaption" */;
 			buildPhases = (
-				1C9880C44FDDB9D3CC9418D1 /* Sources */,
-				1DB951EDAAE246A08DE351D7 /* Frameworks */,
-				FDB56CAFFE00A2B410BEB9CB /* Resources */,
-				75F7F0BE79E6AF5026627261 /* Embed Foundation Extensions */,
+				6570E1F6BE6D6C26D789C85C /* Sources */,
+				63DA65AEB4EC1E47ABCEA996 /* Frameworks */,
+				0B8A46BBA163C8CA046AD029 /* Resources */,
+				44C3652979FA15A56484442B /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				FF853ED0B4C2D592BECBF9AE /* PBXTargetDependency */,
+				8C94C363D7EB0C2B719216A0 /* PBXTargetDependency */,
 			);
 			name = FCPCaption;
 			packageProductDependencies = (
-				3B8490032A9B26A17C17CF1B /* FCPCaptionCore */,
-				AC9B943D4EC3B7F181809BC5 /* FCPCaptionUI */,
+				0121EF59E7F01CA8E2FD29BB /* FCPCaptionCore */,
+				1F71A28F47546E646A9CA411 /* FCPCaptionUI */,
 			);
 			productName = FCPCaption;
-			productReference = 39A23DBE55FDCA5644C95534 /* FCPCaption.app */;
+			productReference = 01F1DB77D26D03681DEF7CFF /* FCPCaption.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		AA06F678605C7081EA5CDFEA /* Project object */ = {
+		DB8E26D69EF399659B20CE85 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 			};
-			buildConfigurationList = B60B88753F92C3857DF5D0BA /* Build configuration list for PBXProject "FCPCaption" */;
+			buildConfigurationList = 8F02827D2EE11D7B57BAE05C /* Build configuration list for PBXProject "FCPCaption" */;
 			compatibilityVersion = "Xcode 3.2";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -197,31 +197,31 @@
 				en,
 				Base,
 			);
-			mainGroup = 541538863A1E719FC93BFFC4;
+			mainGroup = 86B2BA32928219B993C846F7;
 			minimizedProjectReferenceProxies = 0;
 			packageReferences = (
-				86DA462B1454AFD5F715EE29 /* XCLocalSwiftPackageReference "FCPCaptionCore" */,
+				D53DA720E4941D89E13EB5FE /* XCLocalSwiftPackageReference "FCPCaptionCore" */,
 			);
 			preferredProjectObjectVersion = 77;
-			productRefGroup = F2B5123BDFE809A9A671856E /* Products */;
+			productRefGroup = 1F69E8A32795A891A8B9E029 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F90BC6F56EAAC45FFFE6306A /* FCPCaption */,
-				57F00296E235CBE97017256D /* FCPCaptionExtension */,
+				6599E34A14E21881CF2D9AEC /* FCPCaption */,
+				0D889D83B38C702D91718FBA /* FCPCaptionExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		878E5E86F70EFFCBF4AAB23E /* Resources */ = {
+		0B8A46BBA163C8CA046AD029 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FDB56CAFFE00A2B410BEB9CB /* Resources */ = {
+		79951B8C7D991654B45944D9 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -231,102 +231,37 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		1C9880C44FDDB9D3CC9418D1 /* Sources */ = {
+		6570E1F6BE6D6C26D789C85C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3F186C99060C5BFA3BBED18B /* FCPCaptionApp.swift in Sources */,
+				3F9182DDBDCB5D1450372F78 /* FCPCaptionApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		686EF3BEF3D8ABAFBF386444 /* Sources */ = {
+		F0ED14D0ED191CD757D408D5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				6DAD7203140345D685E55B02 /* FCPCaptionExtensionViewController.swift in Sources */,
-				8B5B19965869E8B1511913A7 /* CaptionDropView.swift in Sources */,
-				7743C52ADE45AFB8D77D2E42 /* FinalCutPro.swift in Sources */,
+				F8A7FFB3443761279D1B23C2 /* FCPCaptionExtensionViewController.swift in Sources */,
+				90D69E25739CB2E6D3B152B1 /* CaptionDropView.swift in Sources */,
+				7C7B6E3F31D430A44C35801B /* FinalCutPro.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		FF853ED0B4C2D592BECBF9AE /* PBXTargetDependency */ = {
+		8C94C363D7EB0C2B719216A0 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = FCPCaptionExtension;
-			target = 57F00296E235CBE97017256D /* FCPCaptionExtension */;
-			targetProxy = 10CA6F0B2610D6D1C1D50FBE /* PBXContainerItemProxy */;
+			target = 0D889D83B38C702D91718FBA /* FCPCaptionExtension */;
+			targetProxy = DF9AAE0DE25DAB51B74357F2 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		171A72ED1CDD46BE0B7B2755 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ARCHS = arm64;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
-				CLANG_CXX_LIBRARY = "libc++";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				EXCLUDED_ARCHS = x86_64;
-				GCC_C_LANGUAGE_STANDARD = gnu11;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = NO;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				SDKROOT = macosx;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
-		6A0B3C407F3E427E2D332571 /* Debug */ = {
+		1019DC644A73D89C09FE4B88 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -345,7 +280,46 @@
 			};
 			name = Debug;
 		};
-		6E49490D994328BE55355585 /* Debug */ = {
+		29D6DBA2E138A03078D946D3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ADDITIONAL_SDKS = /Library/Developer/SDKs/WorkflowExtensionSDK.sdk;
+				CODE_SIGN_ENTITLEMENTS = FCPCaptionExtension/FCPCaptionExtension.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_DEBUG_DYLIB = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					/Library/Frameworks,
+					"$(inherited)",
+				);
+				HEADER_SEARCH_PATHS = (
+					/usr/include,
+					"$(inherited)",
+				);
+				INFOPLIST_FILE = FCPCaptionExtension/Info.plist;
+				LD_ENTRY_POINT = _ProExtensionMain;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					/usr/lib,
+					"$(inherited)",
+				);
+				MACH_O_TYPE = mh_execute;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 0.1.0;
+				OTHER_LDFLAGS = (
+					"-fapplication-extension",
+					"-lProExtension",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.jkh911208.FCPCaption.Extension;
+				PRODUCT_NAME = FCPCaptionExtension;
+				SDKROOT = macosx;
+				SWIFT_OBJC_BRIDGING_HEADER = "FCPCaptionExtension/FCPCaptionExtension-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				WRAPPER_EXTENSION = appex;
+			};
+			name = Release;
+		};
+		36A733B6B44B60A8841B0BB7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -416,46 +390,72 @@
 			};
 			name = Debug;
 		};
-		7DB99584D53445A68D11CB63 /* Release */ = {
+		5FAF9321616FDE897ECFD69D /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ADDITIONAL_SDKS = /Library/Developer/SDKs/WorkflowExtensionSDK.sdk;
-				CODE_SIGN_ENTITLEMENTS = FCPCaptionExtension/FCPCaptionExtension.entitlements;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_DEBUG_DYLIB = NO;
-				FRAMEWORK_SEARCH_PATHS = (
-					/Library/Frameworks,
-					"$(inherited)",
-				);
-				HEADER_SEARCH_PATHS = (
-					/usr/include,
-					"$(inherited)",
-				);
-				INFOPLIST_FILE = FCPCaptionExtension/Info.plist;
-				LD_ENTRY_POINT = _ProExtensionMain;
-				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @executable_path/../../../../Frameworks";
-				LIBRARY_SEARCH_PATHS = (
-					/usr/lib,
-					"$(inherited)",
-				);
-				MACH_O_TYPE = mh_execute;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = arm64;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				EXCLUDED_ARCHS = x86_64;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 0.1.0;
-				OTHER_LDFLAGS = (
-					"-fapplication-extension",
-					"-lProExtension",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.jkh911208.FCPCaption.Extension;
-				PRODUCT_NAME = FCPCaptionExtension;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = NO;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SDKROOT = macosx;
-				SWIFT_OBJC_BRIDGING_HEADER = "FCPCaptionExtension/FCPCaptionExtension-Bridging-Header.h";
-				SWIFT_VERSION = 5.0;
-				WRAPPER_EXTENSION = appex;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
-		7EC682F2109B36EDB79965B4 /* Debug */ = {
+		B575D7AA751DC9985310CB82 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ADDITIONAL_SDKS = /Library/Developer/SDKs/WorkflowExtensionSDK.sdk;
@@ -494,7 +494,7 @@
 			};
 			name = Debug;
 		};
-		8B569B438ADC481659E256A1 /* Release */ = {
+		E5BE5382B90838DF450902AF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
@@ -516,29 +516,29 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		3D93E772ABB44A1FAA87AC94 /* Build configuration list for PBXNativeTarget "FCPCaptionExtension" */ = {
+		4F62B5F480D56DA61F1EC298 /* Build configuration list for PBXNativeTarget "FCPCaptionExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				7DB99584D53445A68D11CB63 /* Release */,
-				7EC682F2109B36EDB79965B4 /* Debug */,
+				29D6DBA2E138A03078D946D3 /* Release */,
+				B575D7AA751DC9985310CB82 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		4403102144201EC4D38BCC28 /* Build configuration list for PBXNativeTarget "FCPCaption" */ = {
+		8F02827D2EE11D7B57BAE05C /* Build configuration list for PBXProject "FCPCaption" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				8B569B438ADC481659E256A1 /* Release */,
-				6A0B3C407F3E427E2D332571 /* Debug */,
+				36A733B6B44B60A8841B0BB7 /* Debug */,
+				5FAF9321616FDE897ECFD69D /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		B60B88753F92C3857DF5D0BA /* Build configuration list for PBXProject "FCPCaption" */ = {
+		CB1CC352F416DD6F579F2FD3 /* Build configuration list for PBXNativeTarget "FCPCaption" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				6E49490D994328BE55355585 /* Debug */,
-				171A72ED1CDD46BE0B7B2755 /* Release */,
+				E5BE5382B90838DF450902AF /* Release */,
+				1019DC644A73D89C09FE4B88 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -546,34 +546,34 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		86DA462B1454AFD5F715EE29 /* XCLocalSwiftPackageReference "FCPCaptionCore" */ = {
+		D53DA720E4941D89E13EB5FE /* XCLocalSwiftPackageReference "FCPCaptionCore" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = FCPCaptionCore;
 		};
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		0A794C2C2A6BECDEF852574C /* FCPCaptionUI */ = {
+		0121EF59E7F01CA8E2FD29BB /* FCPCaptionCore */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 86DA462B1454AFD5F715EE29 /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
-			productName = FCPCaptionUI;
-		};
-		3B8490032A9B26A17C17CF1B /* FCPCaptionCore */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 86DA462B1454AFD5F715EE29 /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
+			package = D53DA720E4941D89E13EB5FE /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
 			productName = FCPCaptionCore;
 		};
-		8BA106A6165701936848F9BD /* FCPCaptionCore */ = {
+		1F71A28F47546E646A9CA411 /* FCPCaptionUI */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 86DA462B1454AFD5F715EE29 /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
-			productName = FCPCaptionCore;
-		};
-		AC9B943D4EC3B7F181809BC5 /* FCPCaptionUI */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = 86DA462B1454AFD5F715EE29 /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
+			package = D53DA720E4941D89E13EB5FE /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
 			productName = FCPCaptionUI;
+		};
+		4C310AB5310C050E2C22E697 /* FCPCaptionUI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D53DA720E4941D89E13EB5FE /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
+			productName = FCPCaptionUI;
+		};
+		F451823748E4FDB7BC821F9B /* FCPCaptionCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = D53DA720E4941D89E13EB5FE /* XCLocalSwiftPackageReference "FCPCaptionCore" */;
+			productName = FCPCaptionCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
-	rootObject = AA06F678605C7081EA5CDFEA /* Project object */;
+	rootObject = DB8E26D69EF399659B20CE85 /* Project object */;
 }

@@ -234,3 +234,25 @@ struct PanelModelTests {
         }
     }
 }
+
+/// The name offered in the save panel. A save panel appends the extension itself, so handing it
+/// one too produced "IMG_2194.itt.itt".
+@MainActor
+struct CaptionFileNameTests {
+    @Test func theExtensionIsLeftToTheSavePanel() {
+        #expect(PanelModel.fileBaseName(for: "IMG_2194") == "IMG_2194")
+        #expect(PanelModel.fileBaseName(for: "IMG_2194.itt") == "IMG_2194")
+        #expect(PanelModel.fileBaseName(for: "clip.ITT") == "clip")
+    }
+
+    @Test func aClipNameIsMadeSafeForAFileName() {
+        #expect(PanelModel.fileBaseName(for: "A/B") == "A-B")
+        #expect(PanelModel.fileBaseName(for: "17:12 촬영") == "17-12 촬영")
+    }
+
+    @Test func anEmptyOrMissingNameFallsBack() {
+        #expect(PanelModel.fileBaseName(for: nil) == "자막")
+        #expect(PanelModel.fileBaseName(for: "") == "자막")
+        #expect(PanelModel.fileBaseName(for: ".itt") == "자막")
+    }
+}

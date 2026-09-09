@@ -74,29 +74,34 @@ for real, both now tests:
 - frame quantization (start rounds down, end rounds up) made two adjacent captions overlap by a
   frame even though they didn't overlap in seconds — invalid on one caption lane.
 
-### M2 — how captions actually get into Final Cut Pro (answered 2026-09-09)
+### M2 — settled by trying every route in real Final Cut Pro (2026-09-09)
 
-Both paths were tried in real Final Cut Pro 12.3, on a real project. Spec §10's ladder now has
-measured rungs instead of guesses:
+**The caption file wins.** Save an `.itt`, then **File ▸ Import ▸ Captions…**: the captions land on
+the project already open, in Korean, with nothing duplicated. The panel offers that first.
 
-| Path | What happens | Cost |
-|---|---|---|
-| **Caption file + File ▸ Import ▸ Captions…** | **Captions land on the open, existing project. No dialog at all.** Nothing is duplicated, the timeline the editor is working in is the one that gets the captions. | The user picks the file from a dialog |
-| FCPXML + File ▸ Import ▸ XML… | Works, captions attach to the right clip with the right role — but FCP asks *"replace existing items with matching names?"*. **Keep Both** makes a second project; **Replace** updates the existing one and discards anything edited since the export. | A dialog and a decision |
-| Programmatic write-back | **Does not exist.** The SDK's host API is read-only and FCP's scripting dictionary has one `get` command. | — |
+| Route | What happened |
+|---|---|
+| **iTT file + File ▸ Import ▸ Captions…** | ✅ Lands on the open timeline. `Format iTT \| Language Korean`. No dialog, no duplication |
+| SRT file, same import | Works, but arrives tagged **English** — SubRip has nowhere to record a language |
+| FCPXML + File ▸ Import ▸ XML… | Imports, but brings a **copy of the event and project** into the library ("9-9-26 1"). Import means bringing items in; no dialog choice avoids that |
+| FCPXML by Apple Event `open` | Works — after a `temporary-exception.apple-events` entitlement. The read-only `library.inspection` scripting group is not enough and fails with "A privilege violation occurred" |
+| Caption file by Apple Event `open` | ❌ Final Cut Pro refuses it. It declares no caption UTIs |
+| Caption file dragged from Finder | ❌ |
+| FCPXML dragged from the panel | Not built. Apple documents it and a shipping plugin uses it, but the caption-file route was good enough — **the user's call, and the reason there is no drag code here** |
 
-So the caption-file path wins on result, and the FCPXML path wins on fidelity (correct clip, correct
-Korean role). Both are kept. Apple also documents a drag path — pasteboard types
-`com.apple.finalcutpro.xml.v1-10` / `v1-9` / `com.apple.finalcutpro.xml` via
-`NSPasteboardItemDataProvider` — which would remove the file dialog entirely; a developer-forum
-report says it is rejected from inside an extension, and nobody from Apple answered. **Untested by
-us. Test it the moment the panel exists.**
+Programmatic write-back does not exist at any point: the SDK's host API is read-only and Final Cut
+Pro's scripting dictionary has one `get` command.
 
-**A bug the real import found, now fixed and frozen as six tests:** our captions were red in the
-timeline next to the editor's own. Final Cut Pro validates caption overlap **per language, not per
-lane** — separate lanes did not save us. The writer now trims its captions clear of any existing
-caption in the same language, skips one that would have to be split around theirs, never alters
-what the editor wrote, and reports how many it skipped so a missing caption is never silent.
+**Three bugs this found, each invisible until a real project hit it:**
+- Captions were appended to the end of a clip. Apple's DTD orders a clip's children and `caption`
+  is an anchored item that must precede markers, `audio-channel-source`, filters and metadata. The
+  reference export had none of those; a clip with a Dialogue-1/Dialogue-2 configuration does, and
+  FCP rejected the entire import.
+- Every caption carried a trailing `<br/>`, copied from the reference export — where it existed
+  because that caption's editor had typed a newline. It added an empty third line, past FCP's
+  two-line limit, and drew every caption **red**.
+- The save panel was handed a name that already had its extension, so it offered
+  `IMG_2194.itt.itt`.
 
 ### Transcription is not repeatable, and that is the right trade (2026-09-09)
 

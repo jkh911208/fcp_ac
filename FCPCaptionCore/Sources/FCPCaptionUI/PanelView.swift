@@ -177,7 +177,7 @@ public struct PanelView: View {
             if let captionFile = finished.captionFile, let onSaveCaptionFile {
                 VStack(alignment: .leading, spacing: 4) {
                     wideButton("자막 파일 저장", prominent: true) {
-                        onSaveCaptionFile(captionFile, finished.captionFileName)
+                        onSaveCaptionFile(captionFile, finished.captionFileBaseName)
                     }
                     Text("저장한 뒤 Final Cut Pro에서 **File ▸ Import ▸ Captions…** 로 열면\n지금 편집 중인 프로젝트에 그대로 들어갑니다.")
                         .font(.caption)

@@ -29,9 +29,12 @@ public struct ITTWriter: Sendable {
         let rate = TimecodeRate(frameDuration: frameDuration)
         let paragraphs = captions.map { caption in
             let text = caption.lines.joined(separator: "<br/>")
+            // No trailing <br/>. The reference export has one because the caption in it ended
+            // with a newline the editor had typed; copying it appends an empty third line, which
+            // pushes the caption past Final Cut Pro's two-line limit and shows it in red.
             return """
                   <p begin="\(rate.timecode(caption.start))" end="\(rate.timecode(caption.end))" \
-            region="bottom">\(Self.escape(text))<br/></p>
+            region="bottom">\(Self.escape(text))</p>
             """
         }.joined(separator: "\n")
 
