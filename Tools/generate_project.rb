@@ -125,6 +125,7 @@ extension_target.add_file_references([
   extension_group.new_reference('FCPCaptionExtensionViewController.swift'),
   extension_group.new_reference('CaptionDropView.swift'),
   extension_group.new_reference('FinalCutPro.swift'),
+  extension_group.new_reference('HostContext.swift'),
 ])
 
 %w[FCPCaptionCore FCPCaptionUI].each do |name|

@@ -71,7 +71,11 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 CaptionPipeline(
                     engine: WhisperKitEngine(model: settings.model, options: settings.engine),
                     captionOptions: settings.captions,
-                    language: settings.language
+                    language: settings.language,
+                    style: settings.style,
+                    // Asked for at run time, not at launch: the editor may have switched projects
+                    // since the panel opened.
+                    container: HostContext.current()
                 )
             },
             deliver: { document, clip in try FinalCutPro.write(document, clipName: clip.name) },

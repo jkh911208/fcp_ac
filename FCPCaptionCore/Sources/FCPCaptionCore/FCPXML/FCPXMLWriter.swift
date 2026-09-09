@@ -309,13 +309,3 @@ public struct FCPXMLWriter: Sendable {
     }
 }
 
-
-private extension XMLElement {
-    /// `setAttributesWith` takes a dictionary, so it emits attributes in whatever order hashing
-    /// produced. FCPXML does not care, but people reading diffs do.
-    func setOrderedAttributes(_ attributes: [(String, String)]) {
-        for (name, value) in attributes {
-            addAttribute(XMLNode.attribute(withName: name, stringValue: value) as! XMLNode)
-        }
-    }
-}

@@ -443,3 +443,65 @@ struct FCPXMLWriterElementOrderTests {
         #expect(try Fixture.DTD.validate(output) == nil)
     }
 }
+
+/// Putting a project back inside its own event.
+///
+/// A project dragged from the browser arrives alone — no library, no event — so importing it makes
+/// Final Cut Pro invent an event to hold it, and a copy appears beside the original. The document
+/// exported by hand carries both and makes FCP ask about replacing instead.
+struct FCPXMLContainerWriterTests {
+    private let bareProject = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <fcpxml version="1.14">
+      <resources><format id="r1" frameDuration="1001/60000s"/></resources>
+      <project name="Untitled Project" uid="65AEED54-318B-48D1-938A-CF760EE69037">
+        <sequence format="r1" duration="60s" tcStart="0s"><spine/></sequence>
+      </project>
+    </fcpxml>
+    """
+
+    private let container = FCPXMLContainer(
+        libraryURL: URL(string: "file:///Users/example/Movies/Untitled.fcpbundle/"),
+        eventName: "9-9-26",
+        eventUID: "0A9A800C-92D4-4728-A294-3497172F069E"
+    )
+
+    @Test func theProjectEndsUpInsideItsEventAndLibrary() throws {
+        let wrapped = try FCPXMLContainerWriter.wrapping(Data(bareProject.utf8), in: container)
+        let xml = try XMLDocument(data: wrapped)
+        let project = try #require(try xml.nodes(forXPath: "/fcpxml/library/event/project")
+            .compactMap { $0 as? XMLElement }.first)
+        #expect(project.attribute(forName: "name")?.stringValue == "Untitled Project")
+        // The uid has to survive, or FCP has nothing to match against.
+        #expect(project.attribute(forName: "uid")?.stringValue == "65AEED54-318B-48D1-938A-CF760EE69037")
+
+        let event = try #require(try xml.nodes(forXPath: "/fcpxml/library/event")
+            .compactMap { $0 as? XMLElement }.first)
+        #expect(event.attribute(forName: "name")?.stringValue == "9-9-26")
+        #expect(event.attribute(forName: "uid")?.stringValue == container.eventUID)
+        #expect(try xml.nodes(forXPath: "/fcpxml/project").isEmpty)
+    }
+
+    @Test func resourcesStayWhereTheyAre() throws {
+        let wrapped = try FCPXMLContainerWriter.wrapping(Data(bareProject.utf8), in: container)
+        let xml = try XMLDocument(data: wrapped)
+        #expect(try xml.nodes(forXPath: "/fcpxml/resources/format").count == 1)
+    }
+
+    @Test func aDocumentThatAlreadyHasALibraryIsLeftAlone() throws {
+        let data = try Fixture.data("caption_one_clip.fcpxml")
+        let wrapped = try FCPXMLContainerWriter.wrapping(data, in: container)
+        #expect(wrapped == data)
+    }
+
+    @Test func withoutAnEventNameNothingIsChanged() throws {
+        let data = Data(bareProject.utf8)
+        #expect(try FCPXMLContainerWriter.wrapping(data, in: FCPXMLContainer()) == data)
+    }
+
+    @Test(.enabled(if: Fixture.DTD.isAvailable))
+    func theWrappedDocumentValidatesAgainstApplesDTD() throws {
+        let wrapped = try FCPXMLContainerWriter.wrapping(Data(bareProject.utf8), in: container)
+        #expect(try Fixture.DTD.validate(wrapped) == nil)
+    }
+}
