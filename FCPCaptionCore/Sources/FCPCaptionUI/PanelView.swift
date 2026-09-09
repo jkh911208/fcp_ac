@@ -115,6 +115,12 @@ public struct PanelView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if finished.skipped > 0 {
+                Label("\(finished.skipped)개는 기존 자막과 시간이 겹쳐 건너뛰었습니다", systemImage: "info.circle")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             wideButton("Final Cut Pro에서 열기", prominent: true) { onOpenInFinalCut(finished.output) }
             wideButton("다른 클립 자막 만들기") { model.reset() }
         }

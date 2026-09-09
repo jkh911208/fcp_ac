@@ -24,11 +24,15 @@ public final class PanelModel {
         public var captionCount: Int
         public var clipName: String
         public var output: URL
+        /// Captions the editor's own captions were already occupying. Shown when non-zero, because
+        /// a caption missing from the timeline with no explanation reads as a bug.
+        public var skipped: Int
 
-        public init(captionCount: Int, clipName: String, output: URL) {
+        public init(captionCount: Int, clipName: String, output: URL, skipped: Int = 0) {
             self.captionCount = captionCount
             self.clipName = clipName
             self.output = output
+            self.skipped = skipped
         }
     }
 
@@ -97,9 +101,10 @@ public final class PanelModel {
                 try Task.checkCancellation()
                 let output = try deliver(result.document, result.clip)
                 self.state = .finished(Finished(
-                    captionCount: result.captions.count,
+                    captionCount: result.captions.count - result.skipped,
                     clipName: result.clip.name,
-                    output: output
+                    output: output,
+                    skipped: result.skipped
                 ))
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next

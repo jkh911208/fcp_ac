@@ -33,11 +33,23 @@ public struct FCPXMLWriter: Sendable {
     /// `215999784/60000s` in the reference export. It is a time base, not a timeline position.
     static let syntheticStartSeconds: TimeInterval = 3600
 
+    /// What a write actually did. `skipped` is not a detail: a caption that collided with the
+    /// editor's own is silently missing from the timeline unless somebody says so.
+    public struct WriteResult: Sendable {
+        public var document: Data
+        public var written: Int
+        public var skipped: Int
+    }
+
     /// Returns the document with `captions` attached to `clip`.
     ///
     /// Existing captions are left alone — appending is never destructive, so a second run adds a
     /// second set rather than quietly deleting captions the editor typed by hand.
     public func addingCaptions(_ captions: [Caption], to clip: ClipRef, inDocument data: Data) throws -> Data {
+        try write(captions, to: clip, inDocument: data).document
+    }
+
+    public func write(_ captions: [Caption], to clip: ClipRef, inDocument data: Data) throws -> WriteResult {
         let xml: XMLDocument
         do {
             xml = try XMLDocument(data: data, options: [.nodePreserveWhitespace])
@@ -51,8 +63,11 @@ public struct FCPXMLWriter: Sendable {
         let lane = try self.lane ?? freeLane(in: target)
 
         var nextStyleID = try nextStyleIdentifier(in: root)
+        let occupied = occupiedRanges(in: target, language: language, frameDuration: frameDuration)
+        let all = placements(for: captions, clip: clip, frameDuration: frameDuration)
+        let free = all.compactMap { avoiding(occupied, $0, frameDuration: frameDuration) }
 
-        for placement in placements(for: captions, clip: clip, frameDuration: frameDuration) {
+        for placement in free {
             let styleID = "ts\(nextStyleID)"
             nextStyleID += 1
             target.addChild(captionElement(placement.caption,
@@ -67,7 +82,11 @@ public struct FCPXMLWriter: Sendable {
         // whitespace inside element-only content is a validity error under `standalone="yes"` —
         // which Foundation writes by default. Apple's DTD rejects the document over it.
         xml.isStandalone = false
-        return xml.xmlData(options: [.nodePrettyPrint])
+        return WriteResult(
+            document: xml.xmlData(options: [.nodePrettyPrint]),
+            written: free.count,
+            skipped: all.count - free.count
+        )
     }
 
     // MARK: - Placement
@@ -123,6 +142,55 @@ public struct FCPXMLWriter: Sendable {
             placements.append(Placement(caption: caption, start: start, end: end))
         }
         return placements
+    }
+
+    /// Time ranges already taken by captions **in the same language**, whatever lane they sit on.
+    ///
+    /// Final Cut Pro validates caption overlap per language, not per lane: put a caption over one
+    /// the editor typed and both turn red in the timeline, even on separate lanes. Confirmed by
+    /// importing a document that did exactly that.
+    private func occupiedRanges(
+        in clip: XMLElement,
+        language: String,
+        frameDuration: FCPTime
+    ) -> [(start: FCPTime, end: FCPTime)] {
+        let captions = (try? clip.nodes(forXPath: "caption").compactMap { $0 as? XMLElement }) ?? []
+        return captions.compactMap { element -> (FCPTime, FCPTime)? in
+            let role = element.attribute(forName: "role")?.stringValue ?? ""
+            guard role.hasSuffix(".\(language)") || role == self.role else { return nil }
+            guard let offsetRaw = element.attribute(forName: "offset")?.stringValue,
+                  let durationRaw = element.attribute(forName: "duration")?.stringValue,
+                  let offset = try? FCPTime.parse(offsetRaw),
+                  let duration = try? FCPTime.parse(durationRaw)
+            else { return nil }
+            return (offset, offset + duration)
+        }
+    }
+
+    /// Trims a placement clear of the ranges the editor's captions already own, or drops it.
+    ///
+    /// Trimming only works from the edges. A caption that would straddle an existing one — the
+    /// editor's caption sitting in the middle of ours — is skipped rather than split, because
+    /// splitting would show the same sentence twice.
+    private func avoiding(
+        _ occupied: [(start: FCPTime, end: FCPTime)],
+        _ placement: Placement,
+        frameDuration: FCPTime
+    ) -> Placement? {
+        var placement = placement
+        for range in occupied.sorted(by: { $0.start < $1.start }) {
+            if range.end <= placement.start || range.start >= placement.end { continue }
+            if range.start <= placement.start && range.end >= placement.end { return nil }
+            if range.start <= placement.start {
+                placement.start = range.end
+            } else if range.end >= placement.end {
+                placement.end = range.start
+            } else {
+                return nil   // theirs sits inside ours
+            }
+            if placement.end - placement.start < frameDuration { return nil }
+        }
+        return placement
     }
 
     // MARK: - Building

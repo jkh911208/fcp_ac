@@ -6,8 +6,10 @@ struct FCPXMLWriterTests {
     let reader = FCPXMLReader()
     let writer = FCPXMLWriter()
 
+    /// The reference export with the editor's caption removed: the ordinary case of a clip that
+    /// has no captions yet. Collisions with existing captions have their own suite.
     private func fixture() throws -> (data: Data, document: FCPXMLDocument, clip: ClipRef) {
-        let data = try Fixture.data("caption_one_clip.fcpxml")
+        let data = try Fixture.withoutCaptions("caption_one_clip.fcpxml")
         let document = try reader.read(data: data)
         return (data, document, try #require(document.clips.first))
     }
@@ -27,9 +29,7 @@ struct FCPXMLWriterTests {
             Caption(lines: ["오늘은 날씨가", "정말 좋네요"], start: 2.5, end: 5),
         ])
 
-        #expect(clip.captions.count == 3)   // the fixture's own caption is left alone
-        let ours = clip.captions.filter { $0.text != "안녕하세요" || $0.duration != FCPTime(180180, 60000) }
-        #expect(ours.count == 2)
+        #expect(clip.captions.count == 2)
 
         let second = try #require(clip.captions.last)
         #expect(second.text == "오늘은 날씨가\n정말 좋네요")
@@ -69,7 +69,7 @@ struct FCPXMLWriterTests {
             Caption(lines: ["안에"], start: 1, end: 2),
             Caption(lines: ["밖에"], start: clipDuration + 5, end: clipDuration + 8),
         ])
-        #expect(clip.captions.count == 2)   // the fixture's + the one that fits
+        #expect(clip.captions.count == 1)   // only the one that fits
         #expect(clip.captions.allSatisfy { ($0.offset + $0.duration).seconds <= clipDuration + 0.001 })
     }
 
@@ -113,10 +113,13 @@ struct FCPXMLWriterTests {
     }
 
     @Test func styleIdentifiersDoNotCollideWithTheOnesFinalCutWrote() throws {
-        let (data, _, clip) = try fixture()   // the fixture already defines ts1 and ts2
+        // The real export, not the stripped one: it already defines ts1 and ts2, which is the
+        // whole point. Our captions go clear of its caption in time.
+        let data = try Fixture.data("caption_one_clip.fcpxml")
+        let clip = try #require(try reader.read(data: data).clips.first)
         let written = try writer.addingCaptions([
-            Caption(lines: ["가"], start: 0, end: 1),
-            Caption(lines: ["나"], start: 1.5, end: 2.5),
+            Caption(lines: ["가"], start: 4, end: 5),
+            Caption(lines: ["나"], start: 5.5, end: 6.5),
         ], to: clip, inDocument: data)
         let text = String(decoding: written, as: UTF8.self)
         #expect(text.contains("text-style-def id=\"ts3\""))
@@ -188,10 +191,11 @@ struct FCPXMLWriterLaneTests {
     }
 
     @Test func capionsAvoidALaneThatIsAlreadyInUse() throws {
-        // The fixture's own caption sits on lane 1 from 0s, exactly where ours would go.
+        // The fixture's own caption sits on lane 1; ours goes clear of it in time, but still has
+        // to move off that lane.
         let (data, clip) = try fixture()
         let written = try FCPXMLWriter().addingCaptions(
-            [Caption(lines: ["겹침"], start: 0, end: 2)], to: clip, inDocument: data)
+            [Caption(lines: ["다른 레인"], start: 4, end: 6)], to: clip, inDocument: data)
         let captions = try #require(try reader.read(data: written).clips.first?.captions)
         #expect(captions.count == 2)
         #expect(captions.last?.lane == 2)
@@ -222,9 +226,9 @@ struct FCPXMLWriterLaneTests {
     @Test func everyCaptionInOneRunSharesOneLane() throws {
         let (data, clip) = try fixture()
         let written = try FCPXMLWriter().addingCaptions([
-            Caption(lines: ["하나"], start: 0, end: 2),
-            Caption(lines: ["둘"], start: 3, end: 5),
-            Caption(lines: ["셋"], start: 6, end: 8),
+            Caption(lines: ["하나"], start: 4, end: 6),
+            Caption(lines: ["둘"], start: 7, end: 9),
+            Caption(lines: ["셋"], start: 10, end: 12),
         ], to: clip, inDocument: data)
         let ours = try #require(try reader.read(data: written).clips.first?.captions.dropFirst())
         #expect(Set(ours.map(\.lane)) == [2])
@@ -233,7 +237,7 @@ struct FCPXMLWriterLaneTests {
     @Test func anExplicitLaneIsHonoured() throws {
         let (data, clip) = try fixture()
         let written = try FCPXMLWriter(lane: 5).addingCaptions(
-            [Caption(lines: ["다섯"], start: 0, end: 2)], to: clip, inDocument: data)
+            [Caption(lines: ["다섯"], start: 4, end: 6)], to: clip, inDocument: data)
         #expect(try reader.read(data: written).clips.first?.captions.last?.lane == 5)
     }
 
@@ -241,9 +245,9 @@ struct FCPXMLWriterLaneTests {
     @Test func noTwoCaptionsOnALaneOverlap() throws {
         let (data, clip) = try fixture()
         let written = try FCPXMLWriter().addingCaptions([
-            Caption(lines: ["하나"], start: 0, end: 2),
-            Caption(lines: ["둘"], start: 2, end: 4),
-            Caption(lines: ["셋"], start: 4.5, end: 6),
+            Caption(lines: ["하나"], start: 4, end: 6),
+            Caption(lines: ["둘"], start: 6, end: 8),
+            Caption(lines: ["셋"], start: 8.5, end: 10),
         ], to: clip, inDocument: data)
         let captions = try #require(try reader.read(data: written).clips.first?.captions)
 
@@ -254,5 +258,102 @@ struct FCPXMLWriterLaneTests {
                 #expect((earlier.offset + earlier.duration) <= later.offset)
             }
         }
+    }
+}
+
+
+/// Overlap with the editor's *own* captions.
+///
+/// Final Cut Pro validates caption overlap per language, not per lane. Importing a document whose
+/// new captions overlapped an existing Korean one turned both red in the timeline even though they
+/// sat on different lanes — so lane separation is not enough, and these are the rules that came
+/// out of that import.
+struct FCPXMLWriterExistingCaptionTests {
+    let reader = FCPXMLReader()
+    let writer = FCPXMLWriter()
+
+    /// The fixture's own caption runs 0s–3.003s on lane 1, in Korean.
+    private func fixture() throws -> (data: Data, clip: ClipRef) {
+        let data = try Fixture.data("caption_one_clip.fcpxml")
+        return (data, try #require(try reader.read(data: data).clips.first))
+    }
+
+    private func ours(in document: Data) throws -> [CaptionRef] {
+        let captions = try #require(try reader.read(data: document).clips.first?.captions)
+        return captions.filter { $0.text != "안녕하세요" }
+    }
+
+    @Test func aCaptionCoveredByAnExistingOneIsSkipped() throws {
+        let (data, clip) = try fixture()
+        let result = try writer.write([Caption(lines: ["숨음"], start: 1, end: 2)], to: clip, inDocument: data)
+        #expect(result.written == 0)
+        #expect(result.skipped == 1)
+        #expect(try ours(in: result.document).isEmpty)
+    }
+
+    @Test func aCaptionOverlappingTheEditorsStartIsTrimmed() throws {
+        let (data, clip) = try fixture()
+        let result = try writer.write([Caption(lines: ["겹침"], start: 2, end: 5)], to: clip, inDocument: data)
+        #expect(result.written == 1)
+        let written = try #require(try ours(in: result.document).first)
+        // Starts where the editor's caption ends (3.003s), not at 2s.
+        #expect(written.offset.seconds >= 3.0)
+        #expect(abs((written.offset + written.duration).seconds - 5) < 0.05)
+    }
+
+    @Test func aCaptionWithTheEditorsInTheMiddleIsSkippedNotSplit() throws {
+        // Theirs runs 2s–4s; ours would run 0s–6s straight through it. Splitting ours around it
+        // would put the same sentence on screen twice.
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <fcpxml version="1.14">
+          <resources>
+            <format id="r1" frameDuration="1001/30000s"/>
+            <asset id="r2" name="Take" start="0s" duration="60s" format="r1" hasAudio="1"/>
+          </resources>
+          <library><event name="E"><project name="P"><sequence format="r1" duration="60s"><spine>
+            <asset-clip ref="r2" offset="0s" name="Take" start="0s" duration="60s">
+              <caption lane="1" offset="2s" name="theirs" start="3600s" duration="2s" role="iTT?captionFormat=ITT.ko">
+                <text placement="bottom"><text-style ref="ts1">편집자 자막</text-style></text>
+                <text-style-def id="ts1"><text-style font=".AppleSystemUIFont" fontSize="13"/></text-style-def>
+              </caption>
+            </asset-clip>
+          </spine></sequence></project></event></library>
+        </fcpxml>
+        """
+        let data = Data(xml.utf8)
+        let clip = try #require(try reader.read(data: data).clips.first)
+        let result = try writer.write([Caption(lines: ["가운데"], start: 0, end: 6)], to: clip, inDocument: data)
+        #expect(result.skipped == 1)
+        #expect(result.written == 0)
+    }
+
+    @Test func captionsClearOfTheEditorsAreUntouched() throws {
+        let (data, clip) = try fixture()
+        let result = try writer.write([
+            Caption(lines: ["하나"], start: 4, end: 6),
+            Caption(lines: ["둘"], start: 7, end: 9),
+        ], to: clip, inDocument: data)
+        #expect(result.written == 2)
+        #expect(result.skipped == 0)
+    }
+
+    @Test func aDifferentLanguageDoesNotCollide() throws {
+        // English captions are a different role, so Final Cut Pro does not call them an overlap.
+        let (data, clip) = try fixture()
+        let result = try FCPXMLWriter(language: "en")
+            .write([Caption(lines: ["overlaps the Korean one"], start: 1, end: 2)], to: clip, inDocument: data)
+        #expect(result.written == 1)
+        #expect(result.skipped == 0)
+    }
+
+    @Test func nothingTheEditorWroteIsEverChanged() throws {
+        let (data, clip) = try fixture()
+        let result = try writer.write([Caption(lines: ["겹침"], start: 0, end: 6)], to: clip, inDocument: data)
+        let original = try #require(try reader.read(data: result.document).clips.first?.captions
+            .first { $0.text == "안녕하세요" })
+        #expect(original.offset == .zero)
+        #expect(original.duration == FCPTime(180180, 60000))
+        #expect(original.lane == 1)
     }
 }

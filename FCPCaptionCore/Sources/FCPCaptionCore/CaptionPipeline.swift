@@ -31,6 +31,9 @@ public struct CaptionPipeline: Sendable {
         public var captions: [Caption]
         public var clip: ClipRef
         public var words: Int
+        /// Captions that could not be placed because the editor's own captions already held that
+        /// time. Reported, never silently dropped.
+        public var skipped: Int
     }
 
     public var engine: any TranscriptionEngine
@@ -102,10 +105,16 @@ public struct CaptionPipeline: Sendable {
 
         progress(.writingDocument, Self.overall(.writingDocument, 0))
         let written = try FCPXMLWriter(language: language ?? "ko")
-            .addingCaptions(captions, to: clip, inDocument: data)
+            .write(captions, to: clip, inDocument: data)
         progress(.writingDocument, 1)
 
-        return Result(document: written, captions: captions, clip: clip, words: words.count)
+        return Result(
+            document: written.document,
+            captions: captions,
+            clip: clip,
+            words: words.count,
+            skipped: written.skipped
+        )
     }
 
     /// The clip to caption: the first one with audio. With several, the caller picks — silently

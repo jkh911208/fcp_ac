@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-09-09 · **Current milestone:** M1 in progress. **The pipeline works end to
+**Last updated:** 2026-09-09 · **M2 is answered — see below.** Current milestone: M1 in progress. **The pipeline works end to
 end from the command line** — see "Use it today" in the README. Only the extension shell is missing,
 and it is blocked on an Apple SDK download.
 **Repo:** <https://github.com/jkh911208/fcp_ac> · **Site:** <https://jkh911208.github.io/fcp_ac/>
@@ -74,6 +74,30 @@ for real, both now tests:
 - frame quantization (start rounds down, end rounds up) made two adjacent captions overlap by a
   frame even though they didn't overlap in seconds — invalid on one caption lane.
 
+### M2 — how captions actually get into Final Cut Pro (answered 2026-09-09)
+
+Both paths were tried in real Final Cut Pro 12.3, on a real project. Spec §10's ladder now has
+measured rungs instead of guesses:
+
+| Path | What happens | Cost |
+|---|---|---|
+| **Caption file + File ▸ Import ▸ Captions…** | **Captions land on the open, existing project. No dialog at all.** Nothing is duplicated, the timeline the editor is working in is the one that gets the captions. | The user picks the file from a dialog |
+| FCPXML + File ▸ Import ▸ XML… | Works, captions attach to the right clip with the right role — but FCP asks *"replace existing items with matching names?"*. **Keep Both** makes a second project; **Replace** updates the existing one and discards anything edited since the export. | A dialog and a decision |
+| Programmatic write-back | **Does not exist.** The SDK's host API is read-only and FCP's scripting dictionary has one `get` command. | — |
+
+So the caption-file path wins on result, and the FCPXML path wins on fidelity (correct clip, correct
+Korean role). Both are kept. Apple also documents a drag path — pasteboard types
+`com.apple.finalcutpro.xml.v1-10` / `v1-9` / `com.apple.finalcutpro.xml` via
+`NSPasteboardItemDataProvider` — which would remove the file dialog entirely; a developer-forum
+report says it is rejected from inside an extension, and nobody from Apple answered. **Untested by
+us. Test it the moment the panel exists.**
+
+**A bug the real import found, now fixed and frozen as six tests:** our captions were red in the
+timeline next to the editor's own. Final Cut Pro validates caption overlap **per language, not per
+lane** — separate lanes did not save us. The writer now trims its captions clear of any existing
+caption in the same language, skips one that would have to be split around theirs, never alters
+what the editor wrote, and reports how many it skipped so a missing caption is never silent.
+
 ### M1 — the panel, and what the SDK settled (this branch)
 
 The user installed the **Workflow Extensions SDK v1.0.3** (2026-09-09). Reading it answered the
@@ -134,9 +158,10 @@ click path, is in `docs/XCODE_SETUP.md`.
 - **Caption quality is spot-checked, not measured.** One 24.5s real clip and one synthesized
   sample. The ±0.3s timing bar in the spec's definition of done has not been measured against
   anything. Needs the 1/15/60-minute clips.
-- **Nobody has imported our FCPXML into Final Cut Pro yet.** The document is valid against Apple's
-  DTD and structurally identical to a real export, which is as far as automated checking goes —
-  whether FCP accepts it is the M2 question and needs one human import.
+- **The caption language of an imported `.srt` is unverified.** The SRT path put captions on the
+  timeline with no complaint, but nothing yet confirms they arrive with the Korean caption role
+  rather than a default. Writing `.itt` instead would let us state the language — and that needs a
+  real `.itt` exported from FCP first, the same way the FCPXML schema did.
 - **M2 is the project's real risk** and is untouched: can a Workflow Extension attach captions to
   clips in an *already-open* project via FCPXML import? Fallback ladder in spec §10.
 

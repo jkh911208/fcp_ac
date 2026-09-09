@@ -15,6 +15,18 @@ enum Fixture {
 
     static func data(_ name: String) throws -> Data { try Data(contentsOf: url(name)) }
 
+    /// The fixture with the editor's own caption removed — the ordinary case, a clip with no
+    /// captions on it yet. Placement rules are tested against this; the rules about *not* stepping
+    /// on existing captions are tested against the fixture as it really is.
+    static func withoutCaptions(_ name: String) throws -> Data {
+        let document = try XMLDocument(data: try data(name), options: [.nodePreserveWhitespace])
+        for caption in try document.nodes(forXPath: "//caption").compactMap({ $0 as? XMLElement }) {
+            caption.detach()
+        }
+        document.isStandalone = false
+        return document.xmlData(options: [.nodePrettyPrint])
+    }
+
     /// Final Cut Pro ships the DTD for every FCPXML version it speaks. Validating our output
     /// against Apple's own grammar beats any amount of eyeballing — but it exists only where FCP
     /// is installed, so tests using it are skipped (visibly) elsewhere rather than passing blind.
