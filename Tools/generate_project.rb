@@ -22,6 +22,11 @@ BUNDLE_ID = 'com.jkh911208.FCPCaption'
 DEPLOYMENT_TARGET = '15.0'
 WORKFLOW_SDK = '/Library/Developer/SDKs/WorkflowExtensionSDK.sdk'
 
+# Ad-hoc by default, so a clone builds and runs locally with no Developer Program membership.
+# Tools/package_release.sh sets these to a Developer ID identity for a notarized build.
+SIGN_IDENTITY = ENV.fetch('FCPCAPTION_CODE_SIGN_IDENTITY', '-')
+DEVELOPMENT_TEAM = ENV.fetch('FCPCAPTION_DEVELOPMENT_TEAM', '')
+
 abort("Workflow Extensions SDK not found at #{WORKFLOW_SDK}") unless Dir.exist?(WORKFLOW_SDK)
 
 FileUtils.rm_rf(PROJECT_PATH)
@@ -35,7 +40,8 @@ shared = {
   'SDKROOT' => 'macosx',
   'SWIFT_VERSION' => '6.0',
   'CODE_SIGN_STYLE' => 'Manual',
-  'CODE_SIGN_IDENTITY' => '-',            # ad-hoc: builds and runs locally without a team
+  'CODE_SIGN_IDENTITY' => SIGN_IDENTITY,
+  'DEVELOPMENT_TEAM' => DEVELOPMENT_TEAM,
   'PROVISIONING_PROFILE_SPECIFIER' => '',
   'ENABLE_HARDENED_RUNTIME' => 'YES',
   'ALWAYS_SEARCH_USER_PATHS' => 'NO',
