@@ -16,32 +16,44 @@ enum HostContext {
         case library = 1, event = 2, project = 3, sequence = 4
     }
 
+    /// Key-value coding on `AnyObject`, so it works on a proxy.
+    ///
+    /// The release notes call these "proxy objects", and a proxy need not be an `NSObject`
+    /// subclass — `as? NSObject` on one silently fails and takes everything after it with it,
+    /// which is how the first version of this returned nothing at all.
+    private static func value(_ key: String, of object: AnyObject?) -> AnyObject? {
+        guard let object else { return nil }
+        return (object as AnyObject).value(forKey: key) as AnyObject?
+    }
+
     /// Walks up from the active sequence to its event and library.
     static func current() -> FCPXMLContainer {
-        guard let host = ProExtensionHostSingleton() as? NSObject,
-              let timeline = host.value(forKey: "timeline") as? NSObject,
-              let sequence = timeline.value(forKey: "activeSequence") as? NSObject
+        let host = ProExtensionHostSingleton() as AnyObject?
+        guard let timeline = value("timeline", of: host),
+              let sequence = value("activeSequence", of: timeline)
         else {
             log.notice("no active sequence; the project will not be wrapped")
             return FCPXMLContainer()
         }
 
         var container = FCPXMLContainer()
-        var node: NSObject? = sequence.value(forKey: "container") as? NSObject
+        var node = value("container", of: sequence)
         var depth = 0
         while let current = node, depth < 8 {
             depth += 1
-            let type = (current.value(forKey: "objectType") as? Int).flatMap(ObjectType.init)
+            let type = (value("objectType", of: current) as? NSNumber)
+                .map(\.intValue)
+                .flatMap(ObjectType.init)
             switch type {
             case .event:
-                container.eventName = current.value(forKey: "name") as? String
-                container.eventUID = current.value(forKey: "UID") as? String
+                container.eventName = value("name", of: current) as? String
+                container.eventUID = value("UID", of: current) as? String
             case .library:
-                container.libraryURL = current.value(forKey: "url") as? URL
+                container.libraryURL = value("url", of: current) as? URL
             default:
                 break
             }
-            node = current.value(forKey: "container") as? NSObject
+            node = value("container", of: current)
         }
 
         log.notice("""

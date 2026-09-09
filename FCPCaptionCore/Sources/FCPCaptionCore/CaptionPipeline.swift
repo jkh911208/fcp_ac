@@ -67,6 +67,9 @@ public struct CaptionPipeline: Sendable {
         /// The sequence's frame duration, needed to write a caption file's SMPTE timecodes.
         public var frameDuration: FCPTime?
         public var style: CaptionStyle = .default
+        /// Whether the document was wrapped back into its own event. When it was not, importing
+        /// it adds a copy rather than updating what the editor has open.
+        public var keptInPlace = false
 
         /// Captions positioned against the **timeline** rather than each clip, which is how a
         /// caption file is read. Final Cut Pro imports one of these straight onto the project that
@@ -208,6 +211,7 @@ public struct CaptionPipeline: Sendable {
         progress(Report(stage: .writingDocument, fraction: 1))
         var result = Result(document: try FCPXMLContainerWriter.wrapping(document, in: container),
                             clips: results)
+        result.keptInPlace = container.isUsable
         result.frameDuration = parsed.frameDuration
         result.style = style
         return result

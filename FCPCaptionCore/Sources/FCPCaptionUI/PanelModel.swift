@@ -40,6 +40,9 @@ public final class PanelModel {
         /// The suggested file name **without an extension** — a save panel appends its own from
         /// the allowed content type, and passing "IMG_2194.itt" there produces "IMG_2194.itt.itt".
         public var captionFileBaseName: String
+        /// True when the document was put back inside its own event, so importing updates the
+        /// project instead of adding a copy beside it.
+        public var keepsProject: Bool
         /// Captions the editor's own captions were already occupying. Shown when non-zero, because
         /// a caption missing from the timeline with no explanation reads as a bug.
         public var skipped: Int
@@ -51,13 +54,15 @@ public final class PanelModel {
             skipped: Int = 0,
             clipCount: Int = 1,
             captionFile: String? = nil,
-            captionFileBaseName: String = "자막"
+            captionFileBaseName: String = "자막",
+            keepsProject: Bool = false
         ) {
             self.captionCount = captionCount
             self.clipName = clipName
             self.clipCount = clipCount
             self.captionFile = captionFile
             self.captionFileBaseName = captionFileBaseName
+            self.keepsProject = keepsProject
             self.output = output
             self.skipped = skipped
         }
@@ -170,7 +175,8 @@ public final class PanelModel {
                     skipped: result.skipped,
                     clipCount: result.clips.count,
                     captionFile: result.captionFile(language: settings.language ?? "ko"),
-                    captionFileBaseName: Self.fileBaseName(for: first?.name)
+                    captionFileBaseName: Self.fileBaseName(for: first?.name),
+                    keepsProject: result.keptInPlace
                 ))
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next

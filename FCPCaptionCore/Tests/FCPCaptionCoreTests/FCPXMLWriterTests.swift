@@ -602,3 +602,113 @@ struct FCPXMLWriterFormTests {
         }
     }
 }
+
+/// Which frame grid each anchored item is measured against.
+///
+/// A clip conforming 60p into a 59.94 timeline has two grids, and Final Cut Pro does not use the
+/// same one for both kinds of item: its own Subtitle title sits at `31/20s` — 93 frames at 60, and
+/// not a whole frame at 59.94 — while its own caption sits at `180180/60000s`, a whole frame at
+/// 59.94 and not at 60. Using the sequence grid for titles earns "The item is not on an edit frame
+/// boundary" from the importer, once per title.
+struct FCPXMLWriterFrameGridTests {
+    let reader = FCPXMLReader()
+
+    /// The reference export's clip: 60p asset, 59.94 sequence.
+    private func conformedClip() throws -> (data: Data, clip: ClipRef) {
+        let data = try Fixture.withoutCaptions("caption_one_clip.fcpxml")
+        let clip = try #require(try reader.read(data: data).clips.first)
+        #expect(clip.assetFrameDuration == FCPTime(10, 600))       // 60
+        #expect(try reader.read(data: data).frameDuration == FCPTime(1001, 60000))  // 59.94
+        return (data, clip)
+    }
+
+    private func times(_ xml: XMLDocument, _ element: String) throws -> [FCPTime] {
+        try xml.nodes(forXPath: "//\(element)")
+            .compactMap { $0 as? XMLElement }
+            .flatMap { node -> [FCPTime] in
+                ["offset", "duration"].compactMap { name in
+                    (node.attribute(forName: name)?.stringValue).flatMap { try? FCPTime.parse($0) }
+                }
+            }
+    }
+
+    @Test func titlesLandOnTheClipsOwnGrid() throws {
+        let (data, clip) = try conformedClip()
+        let written = try FCPXMLWriter(form: .title).addingCaptions([
+            Caption(lines: ["하나"], start: 1.02, end: 3.04),
+            Caption(lines: ["둘"], start: 4.55, end: 6.1),
+        ], to: clip, inDocument: data)
+        let xml = try XMLDocument(data: written)
+
+        let clipGrid = FCPTime(10, 600)
+        for time in try times(xml, "title") {
+            let frames = Double(time.numerator * clipGrid.denominator)
+                / Double(time.denominator * clipGrid.numerator)
+            #expect(abs(frames - frames.rounded()) < 0.0001,
+                    "\(time) is not a whole frame at the clip's rate")
+        }
+    }
+
+    @Test func captionsStayOnTheSequenceGrid() throws {
+        let (data, clip) = try conformedClip()
+        let written = try FCPXMLWriter(form: .caption).addingCaptions([
+            Caption(lines: ["하나"], start: 1.02, end: 3.04),
+        ], to: clip, inDocument: data)
+        let xml = try XMLDocument(data: written)
+
+        let sequenceGrid = FCPTime(1001, 60000)
+        for time in try times(xml, "caption") {
+            let frames = Double(time.numerator * sequenceGrid.denominator)
+                / Double(time.denominator * sequenceGrid.numerator)
+            #expect(abs(frames - frames.rounded()) < 0.0001,
+                    "\(time) is not a whole frame at the sequence rate")
+        }
+    }
+
+    /// Both kinds together, each on its own grid.
+    @Test func bothFormsUseTheirOwnGrid() throws {
+        let (data, clip) = try conformedClip()
+        let written = try FCPXMLWriter(form: .both).addingCaptions([
+            Caption(lines: ["하나"], start: 1.02, end: 3.04),
+        ], to: clip, inDocument: data)
+        let xml = try XMLDocument(data: written)
+        #expect(try xml.nodes(forXPath: "//caption").count == 1)
+        #expect(try xml.nodes(forXPath: "//title").count == 1)
+
+        let clipGrid = FCPTime(10, 600)
+        for time in try times(xml, "title") {
+            let frames = Double(time.numerator * clipGrid.denominator)
+                / Double(time.denominator * clipGrid.numerator)
+            #expect(abs(frames - frames.rounded()) < 0.0001)
+        }
+    }
+
+    /// When the two rates are the same there is only one grid and nothing to choose.
+    @Test func anUnconformedClipHasOneGrid() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <fcpxml version="1.14">
+          <resources>
+            <format id="r1" frameDuration="1001/30000s"/>
+            <asset id="r2" name="Take" start="0s" duration="60s" format="r1" hasAudio="1"/>
+          </resources>
+          <library><event name="E"><project name="P"><sequence format="r1" duration="60s"><spine>
+            <asset-clip ref="r2" offset="0s" name="Take" start="0s" duration="60s"/>
+          </spine></sequence></project></event></library>
+        </fcpxml>
+        """
+        let data = Data(xml.utf8)
+        let clip = try #require(try reader.read(data: data).clips.first)
+        let written = try FCPXMLWriter(form: .both).addingCaptions(
+            [Caption(lines: ["가"], start: 1, end: 2)], to: clip, inDocument: data)
+        let document = try XMLDocument(data: written)
+        let grid = FCPTime(1001, 30000)
+        for element in ["caption", "title"] {
+            for time in try times(document, element) {
+                let frames = Double(time.numerator * grid.denominator)
+                    / Double(time.denominator * grid.numerator)
+                #expect(abs(frames - frames.rounded()) < 0.0001)
+            }
+        }
+    }
+}

@@ -107,9 +107,20 @@ public struct FCPXMLWriter: Sendable {
         var effectID: String?
         if form.writesTitles { effectID = try titleEffectID(in: root) }
 
-        for placement in free {
+        // A title's times are checked against the **clip's own** frame rate, not the sequence's.
+        // This clip conforms 60p into a 59.94 timeline, and Final Cut Pro's own Subtitle title in
+        // the reference export sits at 31/20s — 93 frames at 60, and not a whole frame at 59.94.
+        // Using the sequence grid here earns "The item is not on an edit frame boundary" for every
+        // title. Captions, oddly, are validated against the sequence grid; FCP writes them there.
+        let titleGrid = clip.assetFrameDuration ?? frameDuration
+        let titlePlacements = titleGrid == frameDuration
+            ? free
+            : placements(for: captions, clip: clip, frameDuration: titleGrid)
+                .compactMap { avoiding(occupied, $0, frameDuration: titleGrid) }
+
+        for placement in free where form.writesCaptions {
             let duration = placement.end - placement.start
-            if form.writesCaptions {
+            do {
                 let styleID = "ts\(nextStyleID)"
                 nextStyleID += 1
                 insert(captionElement(placement.caption,
@@ -120,13 +131,16 @@ public struct FCPXMLWriter: Sendable {
                                       lane: lane),
                        into: target)
             }
-            if form.writesTitles, let effectID {
+        }
+
+        if form.writesTitles, let effectID {
+            for placement in titlePlacements {
                 let styleID = "ts\(nextStyleID)"
                 nextStyleID += 1
                 insert(titleElement(placement.caption,
                                     start: placement.start,
-                                    duration: duration,
-                                    frameDuration: frameDuration,
+                                    duration: placement.end - placement.start,
+                                    frameDuration: titleGrid,
                                     styleID: styleID,
                                     lane: titleLane,
                                     effectID: effectID),

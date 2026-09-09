@@ -68,7 +68,7 @@ func run() {
                                       detail: "이 모델을 처음 쓸 때만 몇 분 걸립니다. 다음부터는 바로 시작합니다."))),
         ("4-finished", .finished(.init(captionCount: 37, clipName: clip.name,
                                        output: URL(filePath: "/tmp/out.fcpxml"),
-                                       captionFile: "<tt/>", captionFileBaseName: "인터뷰"))),
+                                       captionFile: "<tt/>", captionFileBaseName: "인터뷰", keepsProject: true))),
         ("5-failed", .failed(message: "음성 인식 모델(large-v3-turbo)을 준비하지 못했습니다. 네트워크 연결과 디스크 여유 공간을 확인해 주세요.",
                              canRetry: true)),
     ]

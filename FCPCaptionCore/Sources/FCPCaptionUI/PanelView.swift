@@ -187,9 +187,12 @@ public struct PanelView: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 wideButton("Final Cut Pro로 보내기") { onOpenInFinalCut(finished.output) }
-                Text("프로젝트 사본이 라이브러리에 새로 생깁니다.")
+                Text(finished.keepsProject
+                     ? "지금 프로젝트를 갱신합니다. 임포트 창에서 **Replace**를 누르세요."
+                     : "프로젝트 사본이 라이브러리에 새로 생깁니다.")
                     .font(.caption)
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             wideButton("다른 클립 자막 만들기") { model.reset() }
         }
