@@ -4,7 +4,7 @@ Korean auto-captions for Final Cut Pro, without leaving Final Cut Pro.
 
 [한국어 README](README.ko.md) · [Website](https://jkh911208.github.io/fcp_ac/)
 
-> **v0.1.0 is out** — [download the dmg](https://github.com/jkh911208/fcp_ac/releases/latest).
+> **Released** — [download the dmg](https://github.com/jkh911208/fcp_ac/releases/latest).
 > Signed, notarized, and tested end to end in Final Cut Pro 12.
 
 ## Why

@@ -4,7 +4,7 @@ Final Cut Pro를 떠나지 않고 만드는 한국어 자동 자막.
 
 [English README](README.md) · [웹사이트](https://jkh911208.github.io/fcp_ac/)
 
-> **v0.1.0 나왔습니다** — [dmg 내려받기](https://github.com/jkh911208/fcp_ac/releases/latest).
+> **배포됐습니다** — [dmg 내려받기](https://github.com/jkh911208/fcp_ac/releases/latest).
 > 서명·공증됐고, Final Cut Pro 12에서 처음부터 끝까지 실제로 확인했습니다.
 
 ## 왜 만드나

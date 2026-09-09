@@ -6,7 +6,7 @@ Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAU
 **Last updated:** 2026-09-09 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
-v0.1.0 is signed, notarized and published from this Mac; GitHub only hosts the file.
+Signed, notarized and published from this Mac; GitHub only hosts the file.
 
 **Scope change (2026-09-09, user's decision), now shipped:** the panel offers **captions and
 titles**, not just captions. Spec §4.2 puts styled title templates out of v1 — reversed, because
@@ -256,17 +256,30 @@ Signing identity, team id and notary profile all come from the environment, so n
 written into the repo. What exists on this Mac: `Developer ID Application: Gyuhyong Jeon
 (S597P43HS4)` and a `notarytool store-credentials` profile named `fcpcaption`.
 
-One bug found by running it: under `set -u`, macOS's bash 3.2 treats an empty array's
-`"${arr[@]}"` as an *unbound variable*, so the optional-keychain argument aborted every local
-release at the signing step. Guarded with `${arr[@]+"${arr[@]}"}` and checked in bash 3.2 itself,
-both empty and non-empty. This is the "a guard that could not run is a FAILURE" rule wearing a
+Two bugs, both found by actually running it rather than reading it.
+
+**The script could never have run on this Mac.** Under `set -u`, macOS's bash 3.2 treats an empty
+array's `"${arr[@]}"` as an *unbound variable*, so the optional-keychain argument aborted every
+local release at the signing step. Guarded with `${arr[@]+"${arr[@]}"}` and checked in bash 3.2
+itself, both empty and non-empty. This is "a guard that could not run is a FAILURE" wearing a
 different hat: the empty case was the normal case, and it had never been exercised.
+
+**v0.1.0 stapled the dmg but not the app inside it** (found by installing the published dmg and
+running `stapler validate` on `/Applications/FCPCaption.app`, which said it had no ticket). A
+ticket belongs to one artifact, and the app is the part that survives installation — so Gatekeeper
+had to ask Apple over the network at first launch. Online that is invisible, which is why it
+passed every check made at the time; offline or behind a firewall it blocks the first launch of a
+brand-new app. **v0.1.1** notarizes and staples the app first, builds the dmg from the stapled app,
+and refuses to continue if the copy into the image lost the ticket. `cp -R` is now `ditto` for the
+same reason. The lesson is the one this file keeps relearning: check the artifact a user ends up
+with, not the one the script last touched.
 
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.
 - **Transcription results are lost if the panel closes** or the extension is reinstalled. Nothing
   is persisted between a run and the save. On a 20-minute clip that is 20 minutes thrown away.
+  This is the first thing worth fixing.
 - **A 60-minute clip has never been tried**, on any route.
 - Whether YouTube reads captions embedded in an uploaded video is undocumented and untested; the
   reliable answer remains uploading the `.srt` as a subtitle track.
