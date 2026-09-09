@@ -1,0 +1,31 @@
+# Fixtures
+
+Real Final Cut Pro output. The FCPXML schema is learned from these files, never from memory —
+see [CLAUDE.md](../CLAUDE.md) and spec §9.
+
+## `caption_one_clip.fcpxml`
+
+Exported from Final Cut Pro 12.3 (macOS 26.6): a project with one 4K/59.94 asset-clip carrying one
+Korean caption. The caption text is arbitrary — only the structure matters here.
+
+Produced by: place a clip on the timeline → add a caption (⌥C) → type Korean text → select the
+project in the browser → **File ▸ Export XML…**. FCP writes a `.fcpxmld` bundle; the file inside it
+is `Info.fcpxml`, which is what this is.
+
+Two things were replaced before committing, because this repo is public and they identify a
+machine rather than the schema. Everything else is byte-for-byte what FCP wrote:
+
+- the `<bookmark>` blob (a security-scoped bookmark holding volume UUIDs) → `REDACTED-…`
+- absolute media/library paths under `/Users/james/…` → `/Users/example/…`
+
+### What it settled
+
+| Question | Answer from this file |
+|---|---|
+| Caption role string | `iTT?captionFormat=ITT.ko` — **not** the `iTT?captions.ko` the spec guessed |
+| Where a caption lives | a `<caption>` child of the `<asset-clip>`, with `lane="1"` |
+| FCPXML version | `1.14`, with `<!DOCTYPE fcpxml>` |
+| Time format | rational, `<int>s` or `<int>/<int>s`, **not reduced** (`180180/60000s`) |
+| Frame alignment | every caption time is an exact multiple of the *sequence* format's `frameDuration` (`1001/60000s` here), even though the asset's own format is `10/600s` |
+| Caption `start` | ≈1 hour (`215999784/60000s` = exactly 215784 frames) — FCP's internal base for synthesized elements, not a timeline position |
+| Text | `<text placement="bottom">` wrapping `<text-style ref="…">`, with a sibling `<text-style-def>`; a line break is its own `text-style` run |
