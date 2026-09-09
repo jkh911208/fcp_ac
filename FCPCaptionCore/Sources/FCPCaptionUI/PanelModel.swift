@@ -47,14 +47,28 @@ public final class PanelModel {
     public private(set) var state: State = .waiting
     /// The engine label shown under the clip, e.g. "이 Mac에서 · large-v3-turbo".
     public var engineLabel: String
+    /// Saved on every change, so closing the panel mid-edit does not lose the setting.
+    public var settings: FCPCaptionSettings {
+        didSet {
+            guard settings != oldValue else { return }
+            store?.save(settings)
+            engineLabel = Self.label(for: settings)
+        }
+    }
+    public var showsSettings = false
 
     private var document: Data?
     private var clips: [ClipRef] = []
     private var hasTimeline = false
     private var task: Task<Void, Never>?
 
-    private let makePipeline: @Sendable () -> CaptionPipeline
+    private let makePipeline: @Sendable (FCPCaptionSettings) -> CaptionPipeline
     private let deliver: @Sendable (Data, ClipRef) throws -> URL
+    private let store: SettingsStore?
+
+    public static func label(for settings: FCPCaptionSettings) -> String {
+        "이 Mac에서 · \(settings.model.displayName)"
+    }
 
     /// - Parameters:
     ///   - makePipeline: builds the pipeline per run, so a cancelled engine is never reused.
@@ -63,12 +77,17 @@ public final class PanelModel {
     ///     tests answer differently.
     public init(
         engineLabel: String,
-        makePipeline: @escaping @Sendable () -> CaptionPipeline,
-        deliver: @escaping @Sendable (Data, ClipRef) throws -> URL
+        makePipeline: @escaping @Sendable (FCPCaptionSettings) -> CaptionPipeline,
+        deliver: @escaping @Sendable (Data, ClipRef) throws -> URL,
+        store: SettingsStore? = nil,
+        settings: FCPCaptionSettings = .default
     ) {
         self.engineLabel = engineLabel
         self.makePipeline = makePipeline
         self.deliver = deliver
+        self.store = store
+        self.settings = store?.load() ?? settings
+        self.engineLabel = Self.label(for: self.settings)
     }
 
     // MARK: - Input
@@ -102,11 +121,12 @@ public final class PanelModel {
         guard let document, !clips.isEmpty, task == nil else { return }
         state = .working(stage: .readingDocument, fraction: 0)
 
+        let settings = self.settings
         task = Task { [makePipeline, deliver] in
             defer { self.task = nil }
             do {
                 // No `clip:` — the pipeline captions every audible clip the document carries.
-                let result = try await makePipeline().run(document: document) { stage, fraction in
+                let result = try await makePipeline(settings).run(document: document) { stage, fraction in
                     Task { @MainActor in self.advance(stage: stage, fraction: fraction) }
                 }
                 try Task.checkCancellation()

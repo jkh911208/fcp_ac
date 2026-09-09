@@ -66,7 +66,7 @@ struct PanelModelTests {
     ) -> PanelModel {
         PanelModel(
             engineLabel: "이 Mac에서 · large-v3-turbo",
-            makePipeline: { CaptionPipeline(engine: engine) },
+            makePipeline: { _ in CaptionPipeline(engine: engine) },
             deliver: deliver ?? { data, clip in
                 let url = URL(filePath: NSTemporaryDirectory())
                     .appending(path: "\(clip.name)-\(UUID().uuidString).fcpxml")

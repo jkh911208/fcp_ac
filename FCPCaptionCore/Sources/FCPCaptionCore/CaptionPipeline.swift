@@ -118,10 +118,9 @@ public struct CaptionPipeline: Sendable {
         in document: inout Data,
         progress: @escaping @Sendable (Stage, Double) -> Void
     ) async throws -> ClipResult {
-        guard let media = clip.mediaURL else { throw CaptionPipelineError.noMediaURL(clip.name) }
-        guard FileManager.default.isReadableFile(atPath: media.path(percentEncoded: false)) else {
-            throw CaptionPipelineError.mediaMissing(media)
-        }
+        // Sandboxed, the path alone is not enough; the bookmark FCP ships is the grant.
+        let access = try MediaAccess(clip: clip)
+        let media = access.url
 
         let audio = AudioExtractor.temporaryOutputURL()
         defer { try? FileManager.default.removeItem(at: audio) }

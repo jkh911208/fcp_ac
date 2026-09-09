@@ -6,6 +6,12 @@
 	<true/>
 	<key>com.apple.security.network.client</key>
 	<true/>
+	<!-- Final Cut Pro hands over the media as a security-scoped bookmark inside the FCPXML;
+	     resolving one needs this. Without it the panel can see a clip's path and still not open it. -->
+	<key>com.apple.security.files.bookmarks.document-scope</key>
+	<true/>
+	<key>com.apple.security.files.user-selected.read-only</key>
+	<true/>
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
 	<!-- "Disable Library Validation" from the release notes: the SDK is not fully compatible with

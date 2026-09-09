@@ -16,12 +16,18 @@ public struct PanelView: View {
     }
 
     public var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            content
-            Spacer(minLength: 0)
-            footer
+        Group {
+            if model.showsSettings {
+                SettingsView(settings: $model.settings) { model.showsSettings = false }
+            } else {
+                VStack(alignment: .leading, spacing: 14) {
+                    content
+                    Spacer(minLength: 0)
+                    footer
+                }
+                .padding(16)
+            }
         }
-        .padding(16)
         .frame(minWidth: 280, minHeight: 300)
         .background(Color(nsColor: .windowBackgroundColor))
     }
@@ -171,9 +177,24 @@ public struct PanelView: View {
         HStack(spacing: 6) {
             Image(systemName: "cpu")
             Text(model.engineLabel)
+            Spacer()
+            // Disabled mid-run: changing the model under a running transcription would describe
+            // a result that is not the one being produced.
+            Button {
+                model.showsSettings = true
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .buttonStyle(.borderless)
+            .disabled(isWorking)
+            .help("설정")
         }
         .font(.caption)
         .foregroundStyle(.tertiary)
+    }
+
+    private var isWorking: Bool {
+        if case .working = model.state { true } else { false }
     }
 
     /// A button that fills the panel's width. The `maxWidth` has to sit on the *label*: putting it

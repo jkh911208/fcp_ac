@@ -44,12 +44,19 @@ func run() {
     func model(_ state: PanelModel.State) -> PanelModel {
         let model = PanelModel(
             engineLabel: "이 Mac에서 · large-v3-turbo",
-            makePipeline: { fatalError("preview only") },
+            makePipeline: { _ in fatalError("preview only") },
             deliver: { _, _ in URL(filePath: "/tmp/preview.fcpxml") }
         )
         model.setStateForPreview(state)
         return model
     }
+
+    // The settings screen renders as its own state for review, like the rest.
+    let settingsModel = model(.waiting)
+    settingsModel.showsSettings = true
+    render(PanelView(model: settingsModel, onOpenInFinalCut: { _ in }),
+           to: directory.appending(path: "panel-6-settings-\(appearance == .darkAqua ? "dark" : "light").png"),
+           appearance: appearance)
 
     let states: [(String, PanelModel.State)] = [
         ("1-waiting", .waiting),

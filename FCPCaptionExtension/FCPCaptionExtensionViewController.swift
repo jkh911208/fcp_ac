@@ -59,11 +59,17 @@ final class FCPCaptionExtensionViewController: NSViewController {
 
     @MainActor
     private static func makeModel() -> PanelModel {
-        let model = WhisperModel.default
-        return PanelModel(
-            engineLabel: "이 Mac에서 · \(model.displayName)",
-            makePipeline: { CaptionPipeline(engine: WhisperKitEngine(model: model), language: "ko") },
-            deliver: { document, clip in try FinalCutPro.write(document, clipName: clip.name) }
+        PanelModel(
+            engineLabel: "",
+            makePipeline: { settings in
+                CaptionPipeline(
+                    engine: WhisperKitEngine(model: settings.model, options: settings.engine),
+                    captionOptions: settings.captions,
+                    language: settings.language
+                )
+            },
+            deliver: { document, clip in try FinalCutPro.write(document, clipName: clip.name) },
+            store: .shared
         )
     }
 

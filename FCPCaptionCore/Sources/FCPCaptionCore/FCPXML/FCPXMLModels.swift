@@ -62,6 +62,12 @@ public struct ClipRef: Sendable, Equatable {
     public var lane: Int?
     /// The original media on disk, from the asset's `media-rep`.
     public var mediaURL: URL?
+    /// The security-scoped bookmark Final Cut Pro puts inside `media-rep`.
+    ///
+    /// This is not decoration. A workflow extension is sandboxed, so the media path alone is
+    /// unreadable — `/Users/…/Downloads/clip.MOV` exists and still cannot be opened. The bookmark
+    /// is the grant that makes it readable, which is why FCP ships one with every asset.
+    public var mediaBookmark: Data?
     /// The asset's own format, which may differ from the sequence's (conformed clips).
     public var assetFrameDuration: FCPTime?
     public var hasAudio: Bool
@@ -77,6 +83,7 @@ public struct ClipRef: Sendable, Equatable {
         duration: FCPTime,
         lane: Int? = nil,
         mediaURL: URL? = nil,
+        mediaBookmark: Data? = nil,
         assetFrameDuration: FCPTime? = nil,
         hasAudio: Bool = true,
         captions: [CaptionRef] = []
@@ -89,6 +96,7 @@ public struct ClipRef: Sendable, Equatable {
         self.duration = duration
         self.lane = lane
         self.mediaURL = mediaURL
+        self.mediaBookmark = mediaBookmark
         self.assetFrameDuration = assetFrameDuration
         self.hasAudio = hasAudio
         self.captions = captions

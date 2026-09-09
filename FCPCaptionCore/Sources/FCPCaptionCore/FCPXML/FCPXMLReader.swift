@@ -40,6 +40,7 @@ public struct FCPXMLReader: Sendable {
 
     private struct AssetInfo {
         var mediaURL: URL?
+        var mediaBookmark: Data?
         var formatID: String?
         var hasAudio: Bool
         var name: String?
@@ -65,8 +66,13 @@ public struct FCPXMLReader: Sendable {
             let source = mediaRep.first { $0.attribute(forName: "kind")?.stringValue == "original-media" }
                 ?? mediaRep.first
             let src = source?.attribute(forName: "src")?.stringValue
+            let bookmark = try source?.nodes(forXPath: "bookmark")
+                .compactMap { ($0 as? XMLElement)?.stringValue }
+                .first
+                .flatMap { Data(base64Encoded: $0, options: .ignoreUnknownCharacters) }
             table[id] = AssetInfo(
                 mediaURL: src.flatMap { URL(string: $0) },
+                mediaBookmark: bookmark,
                 formatID: element.attribute(forName: "format")?.stringValue,
                 hasAudio: element.attribute(forName: "hasAudio")?.stringValue == "1",
                 name: element.attribute(forName: "name")?.stringValue,
@@ -153,6 +159,7 @@ public struct FCPXMLReader: Sendable {
             duration: try FCPTime.parse(durationRaw),
             lane: element.attribute(forName: "lane")?.stringValue.flatMap(Int.init),
             mediaURL: asset?.mediaURL,
+            mediaBookmark: asset?.mediaBookmark,
             assetFrameDuration: asset?.formatID.flatMap { formats[$0] },
             hasAudio: asset?.hasAudio ?? true,
             captions: try captions(in: element)

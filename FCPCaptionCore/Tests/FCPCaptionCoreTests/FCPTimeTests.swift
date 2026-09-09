@@ -151,3 +151,54 @@ struct WhisperKitEngineOptionsTests {
         #expect(WhisperKitEngine.Options(temperatureFallbackCount: -3).temperatureFallbackCount == 0)
     }
 }
+
+/// Settings persistence. The panel is a sidebar that gets closed constantly; a setting that does
+/// not survive that is not a setting.
+struct SettingsStoreTests {
+    private func store() -> (SettingsStore, UserDefaults) {
+        let name = "fcpcaption.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        return (SettingsStore(defaults: defaults), defaults)
+    }
+
+    @Test func nothingStoredMeansTheDefaults() {
+        let (store, _) = store()
+        #expect(store.load() == .default)
+        #expect(store.load().model == .largeV3)
+        #expect(store.load().language == "ko")
+    }
+
+    @Test func everythingSurvivesARoundTrip() {
+        let (store, _) = store()
+        var settings = FCPCaptionSettings.default
+        settings.model = .largeV3Turbo
+        settings.engine = .reproducible
+        settings.language = nil                       // auto-detect
+        settings.captions.maxCharactersPerLine = 24
+        settings.captions.minDuration = 1.5
+        store.save(settings)
+
+        let loaded = store.load()
+        #expect(loaded == settings)
+        #expect(loaded.language == nil)
+        #expect(loaded.engine.isReproducible)
+        #expect(loaded.captions.maxCharactersPerLine == 24)
+    }
+
+    /// A stored blob from an older build must not stop the panel from opening — it falls back to
+    /// the defaults rather than throwing on the way up.
+    @Test func unreadableStorageFallsBackInsteadOfFailing() {
+        let (store, defaults) = store()
+        defaults.set(Data("not json".utf8), forKey: "settings")
+        #expect(store.load() == .default)
+    }
+
+    @Test func resetForgetsEverything() {
+        let (store, _) = store()
+        var settings = FCPCaptionSettings.default
+        settings.model = .largeV3Turbo
+        store.save(settings)
+        store.reset()
+        #expect(store.load() == .default)
+    }
+}
