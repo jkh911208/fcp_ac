@@ -177,20 +177,24 @@ public struct PanelView: View {
         HStack(spacing: 6) {
             Image(systemName: "cpu")
             Text(model.engineLabel)
-            Spacer()
+                .lineLimit(1)
+                .truncationMode(.middle)
+            Spacer(minLength: 8)
             // Disabled mid-run: changing the model under a running transcription would describe
             // a result that is not the one being produced.
             Button {
                 model.showsSettings = true
             } label: {
-                Image(systemName: "gearshape")
+                Label("설정", systemImage: "gearshape.fill")
+                    .font(.callout)
+                    .labelStyle(.titleAndIcon)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.bordered)
+            .controlSize(.regular)
             .disabled(isWorking)
-            .help("설정")
         }
         .font(.caption)
-        .foregroundStyle(.tertiary)
+        .foregroundStyle(.secondary)
     }
 
     private var isWorking: Bool {

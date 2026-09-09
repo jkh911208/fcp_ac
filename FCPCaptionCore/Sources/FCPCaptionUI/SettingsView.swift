@@ -7,8 +7,6 @@ public struct SettingsView: View {
     @Binding var settings: FCPCaptionSettings
     var onDone: () -> Void
 
-    @State private var showsAdvanced = false
-
     public init(settings: Binding<FCPCaptionSettings>, onDone: @escaping () -> Void) {
         self._settings = settings
         self.onDone = onDone
@@ -17,6 +15,9 @@ public struct SettingsView: View {
     public var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
+                Text("설정")
+                    .font(.title3).bold()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 model
                 Divider()
                 reliability
@@ -28,11 +29,16 @@ public struct SettingsView: View {
             .padding(16)
         }
         .safeAreaInset(edge: .bottom) {
-            Button(action: onDone) { Text("완료").frame(maxWidth: .infinity) }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(16)
-                .background(.regularMaterial)
+            VStack(spacing: 0) {
+                Divider()
+                Button(action: onDone) { Text("완료").frame(maxWidth: .infinity) }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .padding(16)
+            }
+            // Opaque, not a material: the settings scroll under this bar, and translucency let
+            // radio buttons show through the button.
+            .background(Color(nsColor: .windowBackgroundColor))
         }
     }
 
@@ -78,26 +84,25 @@ public struct SettingsView: View {
         }
     }
 
+    /// Laid out flat rather than behind a disclosure triangle: you are already inside Settings,
+    /// and a 300pt-wide sidebar makes a triangle a hard target for no benefit.
     private var advanced: some View {
-        DisclosureGroup("자막 분할 규칙", isExpanded: $showsAdvanced) {
-            VStack(alignment: .leading, spacing: 12) {
-                stepper("한 줄 최대 글자", value: $settings.captions.maxCharactersPerLine, range: 8...40, unit: "자")
-                stepper("최대 줄 수", value: $settings.captions.maxLines, range: 1...3, unit: "줄")
-                slider("자막 최소 길이", value: $settings.captions.minDuration, range: 0.5...3, unit: "초")
-                slider("자막 최대 길이", value: $settings.captions.maxDuration, range: 2...12, unit: "초")
-                slider("이 정도 쉬면 자막을 끊음", value: $settings.captions.silenceGap, range: 0.2...2, unit: "초")
-                Button("기본값으로") { settings.captions = .default }
-                    .controlSize(.small)
-            }
-            .padding(.top, 8)
+        section("자막 분할 규칙") {
+            stepper("한 줄 최대 글자", value: $settings.captions.maxCharactersPerLine, range: 8...40, unit: "자")
+            stepper("최대 줄 수", value: $settings.captions.maxLines, range: 1...3, unit: "줄")
+            slider("자막 최소 길이", value: $settings.captions.minDuration, range: 0.5...3, unit: "초")
+            slider("자막 최대 길이", value: $settings.captions.maxDuration, range: 2...12, unit: "초")
+            slider("이 정도 쉬면 자막을 끊음", value: $settings.captions.silenceGap, range: 0.2...2, unit: "초")
+            Button("기본값으로") { settings.captions = .default }
+                .controlSize(.small)
+                .padding(.top, 2)
         }
-        .font(.callout)
     }
 
     // MARK: - Pieces
 
     private func section(_ title: String, @ViewBuilder content: () -> some View) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(title).font(.headline)
             content()
         }
