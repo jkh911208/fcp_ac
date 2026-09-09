@@ -87,12 +87,13 @@ struct PanelModelTests {
         let model = makeModel(engine: StubEngine(words: words))
         model.receive(data)
 
-        guard case let .ready(clip, hasTimeline) = model.state else {
+        guard case let .ready(clips, hasTimeline) = model.state else {
             Issue.record("expected .ready, got \(model.state)")
             return
         }
-        #expect(clip.name == "인터뷰")
-        #expect(abs(clip.durationSeconds - 6) < 0.01)
+        #expect(clips.count == 1)
+        #expect(clips[0].name == "인터뷰")
+        #expect(abs(clips[0].durationSeconds - 6) < 0.01)
         #expect(hasTimeline)   // the test document is a project, so it has a sequence
     }
 

@@ -95,7 +95,8 @@ struct CaptionPipelineTests {
 
         #expect(result.words == 4)
         #expect(result.captions.count == 2)          // the sentence break splits them
-        #expect(result.clip.name == "Take")
+        #expect(result.clips.count == 1)
+        #expect(result.clips[0].clip.name == "Take")
 
         let written = try FCPXMLReader().read(data: result.document)
         let captions = try #require(written.clips.first?.captions)
@@ -180,5 +181,90 @@ struct CaptionPipelineTests {
         await #expect(throws: CaptionPipelineError.noSpeechFound) {
             try await CaptionPipeline(engine: StubEngine(words: [])).run(document: data)
         }
+    }
+}
+
+
+/// Dragging a project hands over the whole timeline, so every audible clip on it gets captioned —
+/// not just the first one. Found the hard way: a project with two clips only ever captioned one.
+extension CaptionPipelineTests {
+    /// Two clips on one spine, pointing at the same media at different offsets.
+    private func makeTwoClipProject() throws -> (data: Data, media: URL) {
+        let media = URL(filePath: NSTemporaryDirectory())
+            .appending(path: "fcpcaption-two-\(UUID().uuidString).wav")
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
+        let file = try AVAudioFile(forWriting: media, settings: format.settings)
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 44_100 * 20)!
+        buffer.frameLength = buffer.frameCapacity
+        try file.write(from: buffer)
+
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <fcpxml version="1.14">
+          <resources>
+            <format id="r1" frameDuration="1001/30000s"/>
+            <asset id="r2" name="Take" start="0s" duration="20s" format="r1" hasAudio="1">
+              <media-rep kind="original-media" src="\(media.absoluteString)"/>
+            </asset>
+          </resources>
+          <library><event name="E"><project name="P">
+            <sequence format="r1" duration="10s" tcStart="0s"><spine>
+              <asset-clip ref="r2" offset="0s" name="첫 번째" start="0s" duration="5s"/>
+              <asset-clip ref="r2" offset="5s" name="두 번째" start="12s" duration="5s"/>
+            </spine></sequence>
+          </project></event></library>
+        </fcpxml>
+        """
+        return (Data(xml.utf8), media)
+    }
+
+    @Test func everyAudibleClipOnTheTimelineIsCaptioned() async throws {
+        let (data, media) = try makeTwoClipProject()
+        defer { try? FileManager.default.removeItem(at: media) }
+
+        let result = try await CaptionPipeline(engine: StubEngine(words: words)).run(document: data)
+
+        #expect(result.clips.count == 2)
+        #expect(result.clips.map(\.clip.name) == ["첫 번째", "두 번째"])
+
+        let written = try FCPXMLReader().read(data: result.document)
+        #expect(written.clips.count == 2)
+        #expect(written.clips.allSatisfy { !$0.captions.isEmpty })
+    }
+
+    // Trimmed-away footage is never transcribed: each clip is read only over the range it uses.
+    // The second clip starts 12s into a 20s file, so its audio is the 12s–17s slice.
+    @Test func onlyTheUsedRangeOfEachClipIsTranscribed() async throws {
+        let (data, media) = try makeTwoClipProject()
+        defer { try? FileManager.default.removeItem(at: media) }
+
+        let engine = StubEngine(words: words)
+        _ = try await CaptionPipeline(engine: engine).run(document: data)
+        // The stub records the last clip it saw: 5 seconds, not the whole 20-second file.
+        #expect(abs(try #require(engine.audioSeconds) - 5) < 0.2)
+    }
+
+    @Test func aClipWithNoSpeechDoesNotFailTheWholeRun() async throws {
+        let (data, media) = try makeTwoClipProject()
+        defer { try? FileManager.default.removeItem(at: media) }
+
+        // Silence on one clip of several is ordinary b-roll; only total silence is an error.
+        final class SilentOnSecond: TranscriptionEngine, @unchecked Sendable {
+            let id = "stub"
+            let words: [TranscriptWord]
+            private let lock = NSLock()
+            private var calls = 0
+            init(words: [TranscriptWord]) { self.words = words }
+            func transcribe(audio: URL, language: String?, progress: @escaping @Sendable (Double) -> Void) async throws -> [TranscriptWord] {
+                let first = lock.withLock { calls += 1; return calls == 1 }
+                return first ? words : []
+            }
+            func cancel() {}
+        }
+
+        let result = try await CaptionPipeline(engine: SilentOnSecond(words: words)).run(document: data)
+        #expect(result.clips.count == 2)
+        #expect(!result.clips[0].captions.isEmpty)
+        #expect(result.clips[1].captions.isEmpty)
     }
 }

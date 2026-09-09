@@ -33,8 +33,8 @@ public struct PanelView: View {
             dropTarget
         case .reading:
             busy("클립을 읽는 중…")
-        case let .ready(clip, hasTimeline):
-            clipCard(clip)
+        case let .ready(clips, hasTimeline):
+            clipCard(clips)
             if !hasTimeline {
                 // A clip dragged from the browser carries no sequence, so its captions land on the
                 // library clip — not on a timeline it has already been edited into. Saying so here
@@ -89,16 +89,26 @@ public struct PanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func clipCard(_ clip: ClipRef) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(clip.name)
+    private func clipCard(_ clips: [ClipRef]) -> some View {
+        let total = clips.reduce(0) { $0 + $1.durationSeconds }
+        return VStack(alignment: .leading, spacing: 4) {
+            Text(clips.count == 1 ? (clips.first?.name ?? "") : "클립 \(clips.count)개")
                 .font(.headline)
                 .lineLimit(2)
                 .truncationMode(.middle)
-            Text(Self.duration(clip.durationSeconds))
+            Text(Self.duration(total))
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .monospacedDigit()
+            if clips.count > 1 {
+                // Naming them beats a bare count: it is how you notice a clip you did not mean
+                // to caption before spending twenty minutes on it.
+                Text(clips.map(\.name).joined(separator: ", "))
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(3)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -126,7 +136,7 @@ public struct PanelView: View {
             Label("자막 \(finished.captionCount)개를 만들었습니다", systemImage: "checkmark.circle.fill")
                 .font(.headline)
                 .foregroundStyle(.green)
-            Text("\(finished.clipName) · Final Cut Pro에서 열면 자막이 들어간 프로젝트를 가져옵니다.")
+            Text("\(finished.clipCount > 1 ? "클립 \(finished.clipCount)개" : finished.clipName) · Final Cut Pro에서 열면 자막이 들어간 프로젝트를 가져옵니다.")
                 .font(.callout)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)

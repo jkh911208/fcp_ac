@@ -170,21 +170,24 @@ do {
         if let frameDuration = try FCPXMLReader().read(data: try Data(contentsOf: source)).frameDuration {
             let captionFile = output.deletingPathExtension().deletingPathExtension()
                 .appendingPathExtension("itt")
-            let itt = ITTWriter(language: arguments.language ?? "ko").string(
-                from: result.captions.map { caption in
-                    // Caption times are relative to the clip; the caption file is read against the
-                    // timeline, so the clip's position on it has to be added back.
+            // Caption times are relative to each clip; a caption file is read against the
+            // timeline, so every clip's position on it has to be added back.
+            let timelineCaptions = result.clips.flatMap { clipResult in
+                clipResult.captions.map { caption in
                     Caption(lines: caption.lines,
-                            start: caption.start + result.clip.offset.seconds,
-                            end: caption.end + result.clip.offset.seconds)
-                },
-                frameDuration: frameDuration
-            )
+                            start: caption.start + clipResult.clip.offset.seconds,
+                            end: caption.end + clipResult.clip.offset.seconds)
+                }
+            }
+            let itt = ITTWriter(language: arguments.language ?? "ko")
+                .string(from: timelineCaptions, frameDuration: frameDuration)
             try itt.write(to: captionFile, atomically: true, encoding: .utf8)
             log("자막 파일: \(captionFile.lastPathComponent) (File ▸ Import ▸ Captions… 로 열면 지금 프로젝트에 바로 들어갑니다)")
         }
 
-        log("클립: \(result.clip.name) (\(String(format: "%.1f", result.clip.durationSeconds))초)")
+        for clipResult in result.clips {
+            log("클립: \(clipResult.clip.name) (\(String(format: "%.1f", clipResult.clip.durationSeconds))초) → 자막 \(clipResult.captions.count)개")
+        }
         log("""
         완료: 단어 \(result.words)개 → 자막 \(result.captions.count)개, \
         \(String(format: "%.1f", Date().timeIntervalSince(started)))초 소요

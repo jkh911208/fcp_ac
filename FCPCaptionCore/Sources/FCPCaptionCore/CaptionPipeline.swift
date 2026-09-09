@@ -28,11 +28,20 @@ public struct CaptionPipeline: Sendable {
 
     public struct Result: Sendable {
         public var document: Data
-        public var captions: [Caption]
-        public var clip: ClipRef
-        public var words: Int
+        /// One entry per clip captioned, in timeline order.
+        public var clips: [ClipResult]
+
+        public var captions: [Caption] { clips.flatMap(\.captions) }
+        public var words: Int { clips.reduce(0) { $0 + $1.words } }
         /// Captions that could not be placed because the editor's own captions already held that
         /// time. Reported, never silently dropped.
+        public var skipped: Int { clips.reduce(0) { $0 + $1.skipped } }
+    }
+
+    public struct ClipResult: Sendable {
+        public var clip: ClipRef
+        public var captions: [Caption]
+        public var words: Int
         public var skipped: Int
     }
 
@@ -64,6 +73,11 @@ public struct CaptionPipeline: Sendable {
         return range.lowerBound + (range.upperBound - range.lowerBound) * min(1, max(0, fraction))
     }
 
+    /// Captions every audible clip in the document, or just `selected` when one is given.
+    ///
+    /// Dragging a project hands over its whole timeline, and someone who drags a project wants
+    /// their project captioned — not its first clip. Progress is weighted by clip duration, so a
+    /// 20-second clip before an 18-minute one does not take half the bar.
     public func run(
         document data: Data,
         clip selected: ClipRef? = nil,
@@ -71,8 +85,39 @@ public struct CaptionPipeline: Sendable {
     ) async throws -> Result {
         progress(.readingDocument, Self.overall(.readingDocument, 0))
         let parsed = try FCPXMLReader().read(data: data)
+        let clips = try selected.map { [$0] } ?? audibleClips(in: parsed)
 
-        let clip = try selected ?? pickClip(in: parsed)
+        let totalDuration = clips.reduce(0.0) { $0 + $1.durationSeconds }
+        var elapsedDuration = 0.0
+        var document = data
+        var results: [ClipResult] = []
+
+        for clip in clips {
+            let share = totalDuration > 0 ? clip.durationSeconds / totalDuration : 1
+            let base = totalDuration > 0 ? elapsedDuration / totalDuration : 0
+            let scaled: @Sendable (Stage, Double) -> Void = { stage, fraction in
+                progress(stage, Self.overall(stage, base + share * fraction))
+            }
+
+            let result = try await caption(clip: clip, in: &document, progress: scaled)
+            results.append(result)
+            elapsedDuration += clip.durationSeconds
+        }
+
+        // Silence on one clip of several is normal — a b-roll shot with no dialogue. Silence on
+        // everything is worth saying out loud.
+        guard results.contains(where: { !$0.captions.isEmpty }) else {
+            throw CaptionPipelineError.noSpeechFound
+        }
+        progress(.writingDocument, 1)
+        return Result(document: document, clips: results)
+    }
+
+    private func caption(
+        clip: ClipRef,
+        in document: inout Data,
+        progress: @escaping @Sendable (Stage, Double) -> Void
+    ) async throws -> ClipResult {
         guard let media = clip.mediaURL else { throw CaptionPipelineError.noMediaURL(clip.name) }
         guard FileManager.default.isReadableFile(atPath: media.path(percentEncoded: false)) else {
             throw CaptionPipelineError.mediaMissing(media)
@@ -87,44 +132,38 @@ public struct CaptionPipeline: Sendable {
             start: CMTime(seconds: clip.start.seconds, preferredTimescale: 600),
             duration: CMTime(seconds: clip.duration.seconds, preferredTimescale: 600)
         )
-        progress(.extractingAudio, Self.overall(.extractingAudio, 0))
+        progress(.extractingAudio, 0)
         try await AudioExtractor().extract(from: media, range: range, to: audio) { fraction in
-            progress(.extractingAudio, Self.overall(.extractingAudio, fraction))
+            progress(.extractingAudio, fraction)
         }
         try Task.checkCancellation()
 
-        progress(.transcribing, Self.overall(.transcribing, 0))
+        progress(.transcribing, 0)
         let words = try await engine.transcribe(audio: audio, language: language) { fraction in
-            progress(.transcribing, Self.overall(.transcribing, fraction))
+            progress(.transcribing, fraction)
         }
         try Task.checkCancellation()
 
-        progress(.buildingCaptions, Self.overall(.buildingCaptions, 0))
+        progress(.buildingCaptions, 0)
         let captions = CaptionBuilder(options: captionOptions).build(from: words)
-        guard !captions.isEmpty else { throw CaptionPipelineError.noSpeechFound }
+        guard !captions.isEmpty else {
+            return ClipResult(clip: clip, captions: [], words: words.count, skipped: 0)
+        }
 
-        progress(.writingDocument, Self.overall(.writingDocument, 0))
+        progress(.writingDocument, 0)
         let written = try FCPXMLWriter(language: language ?? "ko")
-            .write(captions, to: clip, inDocument: data)
-        progress(.writingDocument, 1)
-
-        return Result(
-            document: written.document,
-            captions: captions,
-            clip: clip,
-            words: words.count,
-            skipped: written.skipped
-        )
+            .write(captions, to: clip, inDocument: document)
+        document = written.document
+        return ClipResult(clip: clip, captions: captions, words: words.count, skipped: written.skipped)
     }
 
-    /// The clip to caption: the first one with audio. With several, the caller picks — silently
-    /// captioning an arbitrary clip of many would be a guess about intent.
-    private func pickClip(in document: FCPXMLDocument) throws -> ClipRef {
+    /// Every clip with audio, in the order the document lists them.
+    private func audibleClips(in document: FCPXMLDocument) throws -> [ClipRef] {
         let audible = document.clips.filter(\.hasAudio)
-        guard let first = audible.first else {
+        guard !audible.isEmpty else {
             throw document.clips.isEmpty ? CaptionPipelineError.noClips : CaptionPipelineError.noAudibleClip
         }
-        return first
+        return audible
     }
 }
 

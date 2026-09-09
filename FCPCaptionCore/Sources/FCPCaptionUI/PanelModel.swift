@@ -14,10 +14,13 @@ public final class PanelModel {
         /// Nothing dropped yet. The only state that shows the drop target.
         case waiting
         case reading
+        /// Every audible clip in the dropped document — a project drop carries the whole timeline,
+        /// and all of it gets captioned.
+        ///
         /// `hasTimeline` is false when the drop was a browser *clip* rather than a project: there
         /// is no sequence in the document, so captions can only attach to the library clip and
         /// will not appear on any timeline the clip was already edited into.
-        case ready(ClipRef, hasTimeline: Bool)
+        case ready(clips: [ClipRef], hasTimeline: Bool)
         case working(stage: CaptionPipeline.Stage, fraction: Double)
         case finished(Finished)
         case failed(message: String, canRetry: Bool)
@@ -26,14 +29,16 @@ public final class PanelModel {
     public struct Finished: Equatable {
         public var captionCount: Int
         public var clipName: String
+        public var clipCount: Int
         public var output: URL
         /// Captions the editor's own captions were already occupying. Shown when non-zero, because
         /// a caption missing from the timeline with no explanation reads as a bug.
         public var skipped: Int
 
-        public init(captionCount: Int, clipName: String, output: URL, skipped: Int = 0) {
+        public init(captionCount: Int, clipName: String, output: URL, skipped: Int = 0, clipCount: Int = 1) {
             self.captionCount = captionCount
             self.clipName = clipName
+            self.clipCount = clipCount
             self.output = output
             self.skipped = skipped
         }
@@ -44,7 +49,7 @@ public final class PanelModel {
     public var engineLabel: String
 
     private var document: Data?
-    private var clip: ClipRef?
+    private var clips: [ClipRef] = []
     private var hasTimeline = false
     private var task: Task<Void, Never>?
 
@@ -72,11 +77,11 @@ public final class PanelModel {
         state = .reading
         do {
             let (document, clips, parsed) = try DroppedDocument.parse(data)
-            guard let clip = clips.first else { throw CaptionPipelineError.noAudibleClip }
+            guard !clips.isEmpty else { throw CaptionPipelineError.noAudibleClip }
             self.document = document
-            self.clip = clip
+            self.clips = clips
             self.hasTimeline = parsed.sequence != nil
-            state = .ready(clip, hasTimeline: hasTimeline)
+            state = .ready(clips: clips, hasTimeline: hasTimeline)
         } catch {
             fail(error, canRetry: false)
         }
@@ -94,27 +99,32 @@ public final class PanelModel {
     // MARK: - Run
 
     public func start() {
-        guard let document, let clip, task == nil else { return }
+        guard let document, !clips.isEmpty, task == nil else { return }
         state = .working(stage: .readingDocument, fraction: 0)
 
         task = Task { [makePipeline, deliver] in
             defer { self.task = nil }
             do {
-                let result = try await makePipeline().run(document: document, clip: clip) { stage, fraction in
+                // No `clip:` — the pipeline captions every audible clip the document carries.
+                let result = try await makePipeline().run(document: document) { stage, fraction in
                     Task { @MainActor in self.advance(stage: stage, fraction: fraction) }
                 }
                 try Task.checkCancellation()
-                let output = try deliver(result.document, result.clip)
+                let first = result.clips.first?.clip
+                let output = try deliver(result.document, first ?? self.clips[0])
                 self.state = .finished(Finished(
                     captionCount: result.captions.count - result.skipped,
-                    clipName: result.clip.name,
+                    clipName: first?.name ?? "",
                     output: output,
-                    skipped: result.skipped
+                    skipped: result.skipped,
+                    clipCount: result.clips.count
                 ))
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next
                 // thing a person does after cancelling is almost always run it again.
-                self.state = self.clip.map { State.ready($0, hasTimeline: self.hasTimeline) } ?? .waiting
+                self.state = self.clips.isEmpty
+                    ? .waiting
+                    : .ready(clips: self.clips, hasTimeline: self.hasTimeline)
             } catch {
                 self.fail(error, canRetry: true)
             }
@@ -129,13 +139,13 @@ public final class PanelModel {
     public func reset() {
         task?.cancel()
         document = nil
-        clip = nil
+        clips = []
         state = .waiting
     }
 
     /// Retry after a failure, keeping the clip that was already dropped.
     public func retry() {
-        guard clip != nil else { return reset() }
+        guard !clips.isEmpty else { return reset() }
         start()
     }
 
