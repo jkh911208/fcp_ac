@@ -10,10 +10,11 @@ asked, each time.
 
 ### 1. A Developer ID Application certificate
 
-Checked on this Mac (2026-09-09), `security find-identity -v -p codesigning` lists **Apple
-Development** and **Apple Distribution** but **no Developer ID Application**. Those two are for
-running locally and for the App Store; a `.dmg` handed to someone outside the App Store needs
-Developer ID, and notarization refuses anything else.
+**Done on this Mac, 2026-09-09:** `Developer ID Application: Gyuhyong Jeon (S597P43HS4)`.
+
+Kept here for a fresh Mac. **Apple Development** and **Apple Distribution** are not
+substitutes — those are for running locally and for the App Store, while a `.dmg` handed to
+someone outside the App Store needs Developer ID, and notarization refuses anything else.
 
 **Xcode ▸ Settings ▸ Accounts ▸** your Apple ID **▸ Manage Certificates… ▸ + ▸ Developer ID
 Application.** Only an Account Holder or Admin of the team can create one. Then check it appears:
@@ -22,7 +23,12 @@ Application.** Only an Account Holder or Admin of the team can create one. Then 
 security find-identity -v -p codesigning | grep "Developer ID Application"
 ```
 
+The team id is the parenthesised code in that identity, and also the `OU` of the certificate's
+subject — so it never has to be looked up in a browser.
+
 ### 2. Notarization credentials
+
+**Done on this Mac, 2026-09-09:** stored under the profile name `fcpcaption`.
 
 Apple needs to know it is you submitting. Store them once in the keychain — this asks for a
 password, so it is yours to run, not the agent's:
@@ -35,6 +41,10 @@ xcrun notarytool store-credentials fcpcaption \
 ```
 
 An App Store Connect API key (`--key`, `--key-id`, `--issuer`) works too, and is what CI would use.
+
+The app-specific password is not the Apple ID password: **appleid.apple.com ▸ Sign-In and Security
+▸ App-Specific Passwords**. It is shown once. It is a credential — if it is ever pasted somewhere it
+can be read (a screenshot, a chat, a log), revoke it on that same page and store a new one.
 
 ## Then
 
@@ -79,6 +89,14 @@ A self-hosted runner on this Mac would automate the tag → release path, and wo
 Developer ID certificate and notarization credentials as repository secrets. That is a real option
 if releases ever become frequent enough to be a chore; it is not worth the secret handling for a
 release every few weeks.
+
+## A trap worth remembering
+
+macOS ships **bash 3.2**, where `set -u` treats an empty array's `"${arr[@]}"` as an *unbound
+variable* — not as nothing. The optional `--keychain` argument in `package_release.sh` was written
+that way and aborted every local release at the signing step, because the empty case *is* the
+normal case here and had never been exercised. It is written as `${arr[@]+"${arr[@]}"}` now. Any
+new optional-argument array in these scripts needs the same guard.
 
 ## Verifying on another Mac
 
