@@ -42,17 +42,19 @@ xcodebuild -project FCPCaption.xcodeproj -scheme FCPCaption -configuration Relea
 # The appex is signed before the app that contains it: signing the outer bundle first would be
 # invalidated by touching the inner one afterwards.
 # On CI the identity lives in a throwaway keychain, not the login one.
+# Written so the empty case expands to nothing: macOS's bash 3.2 calls a bare "${arr[@]}" an
+# unbound variable under `set -u`, so an unguarded expansion breaks every local release.
 KEYCHAIN_ARGS=()
 if [ -n "${FCPCAPTION_KEYCHAIN:-}" ]; then
   KEYCHAIN_ARGS=(--keychain "$FCPCAPTION_KEYCHAIN")
 fi
 
 echo "==> Signing"
-codesign --force --timestamp --options runtime "${KEYCHAIN_ARGS[@]}" \
+codesign --force --timestamp --options runtime ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} \
   --entitlements FCPCaptionExtension/FCPCaptionExtension.entitlements \
   --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" \
   "$APP/Contents/PlugIns/FCPCaptionExtension.appex"
-codesign --force --timestamp --options runtime "${KEYCHAIN_ARGS[@]}" \
+codesign --force --timestamp --options runtime ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} \
   --entitlements FCPCaption/FCPCaption.entitlements \
   --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" \
   "$APP"
@@ -71,7 +73,7 @@ mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "FCPCaption" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-codesign --force --timestamp "${KEYCHAIN_ARGS[@]}" --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" "$DMG"
+codesign --force --timestamp ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" "$DMG"
 
 if [ -z "${FCPCAPTION_NOTARY_PROFILE:-}" ]; then
   echo "!! FCPCAPTION_NOTARY_PROFILE is not set — the dmg is signed but NOT notarized."

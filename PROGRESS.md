@@ -3,24 +3,19 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Scope change (2026-09-09, user's decision):** the panel will offer **captions and titles**, not
-just captions. Spec §4.2 puts styled title templates out of v1 — that is being reversed, because
+**Last updated:** 2026-09-09 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
+drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
+v0.1.0 is signed, notarized and published from this Mac; GitHub only hosts the file.
+
+**Scope change (2026-09-09, user's decision), now shipped:** the panel offers **captions and
+titles**, not just captions. Spec §4.2 puts styled title templates out of v1 — reversed, because
 Final Cut Pro's caption inspector offers no font control at all while its Subtitle *title*
-template offers every one. The two are different things and both are wanted: captions carry a
-subtitle track that can be exported and toggled, titles are text burned into the picture. They
-coexist on one timeline, so "both" is a real option and not a compromise.
-
-Confirmed along the way: **Final Cut Pro does render the `text-style` we write into a caption** —
-40pt Helvetica in yellow came through — it simply gives no way to change it afterwards. So the
-style controls are worth having on either route; what titles add is editability in FCP.
-
-Waiting on a fixture: a project with FCP's built-in Subtitle title, exported as FCPXML, to learn
-the effect `uid` and the `<title>` element's shape. Guessing that string is how `iTT?captions.ko`
-would have happened again.
-
-**Last updated:** 2026-09-09 · **M2 is answered — see below.** Current milestone: M1 in progress. **The pipeline works end to
-end from the command line** — see "Use it today" in the README. Only the extension shell is missing,
-and it is blocked on an Apple SDK download.
+template offers every one. Both are wanted and they coexist on one timeline, so "both" is a real
+option and not a compromise. **Final Cut Pro does render the `text-style` written into a caption**
+— 40pt Helvetica in yellow came through — it simply gives no way to change it afterwards; what
+titles add is editability inside FCP. The title effect `uid` came from a real export
+(`Fixtures/title_subtitle.fcpxml`), never from memory.
 **Repo:** <https://github.com/jkh911208/fcp_ac> · **Site:** <https://jkh911208.github.io/fcp_ac/>
 
 > Bootstrap note: this first commit was made directly on `main` in the main working tree, because
@@ -244,19 +239,37 @@ click path, is in `docs/XCODE_SETUP.md`.
   FCP export, and `ITTWriter` reproduces it — `xml:lang` on the root, SMPTE timecodes counted in
   nominal frames, the 1000/1001 pulldown multiplier. The CLI now writes an `.itt` next to the
   FCPXML, which is the file that reaches the already-open project with no dialog.
-- **M2 is the project's real risk** and is untouched: can a Workflow Extension attach captions to
-  clips in an *already-open* project via FCPXML import? Fallback ladder in spec §10.
+- ~~**M2 is the project's real risk** and is untouched.~~ **Answered** — both routes work; see
+  "M2 and M3" above. The `.itt` route reaches the already-open project with no dialog at all.
+
+### M5 — the release (2026-09-09)
+
+`Tools/package_release.sh` builds Release, signs the appex before the app that contains it,
+verifies the signature, refuses to continue if library validation crept back onto the extension
+(the SDK does not work with it), builds and signs the dmg, notarizes, staples, and re-checks the
+result the way Gatekeeper will. With a version argument it also publishes to GitHub Releases —
+that step is file hosting only. The build has to happen on this Mac because Apple's Workflow
+Extensions SDK cannot be installed on a hosted runner, so the tag-triggered CI build the user
+asked about is not possible; `.github/workflows/ci.yml` runs the package tests and nothing more.
+
+Signing identity, team id and notary profile all come from the environment, so no secret is ever
+written into the repo. What exists on this Mac: `Developer ID Application: Gyuhyong Jeon
+(S597P43HS4)` and a `notarytool store-credentials` profile named `fcpcaption`.
+
+One bug found by running it: under `set -u`, macOS's bash 3.2 treats an empty array's
+`"${arr[@]}"` as an *unbound variable*, so the optional-keychain argument aborted every local
+release at the signing step. Guarded with `${arr[@]+"${arr[@]}"}` and checked in bash 3.2 itself,
+both empty and non-empty. This is the "a guard that could not run is a FAILURE" rule wearing a
+different hat: the empty case was the normal case, and it had never been exercised.
 
 ## Next
 
-1. ~~Fixture (a), the FCPXML reader/writer, audio extraction, the pipeline, the panel UI~~ — done.
-2. **Blocked on the user:** create the Xcode project and the extension target — `docs/XCODE_SETUP.md`
-   steps 1–3. Five minutes of clicking; everything after it is code.
-3. Then, in order: the entitlement and Info.plist edits (agent, plist files not GUI), the view
-   controller hosting `PanelView`, and a first real drop — which captures fixture (b) and answers
-   what the pasteboard actually carries.
-4. M2 is now half-answered by the SDK headers. What remains is only *which* delivery path works:
-   dragging FCPXML from the panel into the timeline, or opening the file for import.
+- **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.
+- **Transcription results are lost if the panel closes** or the extension is reinstalled. Nothing
+  is persisted between a run and the save. On a 20-minute clip that is 20 minutes thrown away.
+- **A 60-minute clip has never been tried**, on any route.
+- Whether YouTube reads captions embedded in an uploaded video is undocumented and untested; the
+  reliable answer remains uploading the `.srt` as a subtitle track.
 
 **M4 (OpenRouter engine, Keychain, Settings) is deferred** — the user's call, 2026-09-09. The
 `TranscriptionEngine` protocol and the injectable base URL stay as the spec sanctions them, but
@@ -273,6 +286,6 @@ for the cloud engine is that it needs no 3 GB download, no ten-minute Neural Eng
 | ~~FCPXML fixture (a)~~ | — | **Done** — provided 2026-09-09, committed as `Fixtures/caption_one_clip.fcpxml` |
 | FCPXML fixture (b) — what FCP hands the extension on drop | M1 | Same; and it needs the extension running |
 | Korean test clips: 1 / 15 / 60 minutes | M0 sign-off, M3 | Real speech, real accents, real noise |
-| Xcode target/entitlement/signing setup | M1, M5 | GUI-only work — per spec §14 it stays with the user |
-| Apple Developer Program membership | M5 only | Notarization |
+| ~~Xcode target/entitlement/signing setup~~ | — | **Done** — `docs/XCODE_SETUP.md` is the record |
+| ~~Apple Developer Program membership~~ | — | **Done** — Developer ID cert + `fcpcaption` notary profile exist on this Mac |
 | OpenRouter API key | M4 only | The user's own key, stored in Keychain |
