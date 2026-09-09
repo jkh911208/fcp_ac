@@ -31,14 +31,31 @@ public final class PanelModel {
         public var clipName: String
         public var clipCount: Int
         public var output: URL
+        /// The iTT caption file for the whole timeline, when the document had a frame rate.
+        ///
+        /// This is the one that lands on the project already open — Final Cut Pro's caption import
+        /// adds to the current timeline instead of bringing a new event and project into the
+        /// library, which is what importing FCPXML does.
+        public var captionFile: String?
+        public var captionFileName: String
         /// Captions the editor's own captions were already occupying. Shown when non-zero, because
         /// a caption missing from the timeline with no explanation reads as a bug.
         public var skipped: Int
 
-        public init(captionCount: Int, clipName: String, output: URL, skipped: Int = 0, clipCount: Int = 1) {
+        public init(
+            captionCount: Int,
+            clipName: String,
+            output: URL,
+            skipped: Int = 0,
+            clipCount: Int = 1,
+            captionFile: String? = nil,
+            captionFileName: String = "자막.itt"
+        ) {
             self.captionCount = captionCount
             self.clipName = clipName
             self.clipCount = clipCount
+            self.captionFile = captionFile
+            self.captionFileName = captionFileName
             self.output = output
             self.skipped = skipped
         }
@@ -137,7 +154,9 @@ public final class PanelModel {
                     clipName: first?.name ?? "",
                     output: output,
                     skipped: result.skipped,
-                    clipCount: result.clips.count
+                    clipCount: result.clips.count,
+                    captionFile: result.captionFile(language: settings.language ?? "ko"),
+                    captionFileName: "\(first?.name ?? "자막").itt"
                 ))
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next

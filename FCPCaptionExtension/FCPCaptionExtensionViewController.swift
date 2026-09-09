@@ -29,9 +29,15 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 MainActor.assumeIsolated { model?.receive(data) }
             }
 
-            let panel = NSHostingView(rootView: PanelView(model: model) { url in
-                MainActor.assumeIsolated { Self.openInFinalCutPro(url, model: model) }
-            })
+            let panel = NSHostingView(rootView: PanelView(
+                model: model,
+                onOpenInFinalCut: { url in
+                    MainActor.assumeIsolated { Self.openInFinalCutPro(url, model: model) }
+                },
+                onSaveCaptionFile: { contents, name in
+                    MainActor.assumeIsolated { Self.saveCaptionFile(contents, named: name) }
+                }
+            ))
             panel.translatesAutoresizingMaskIntoConstraints = false
             dropView.addSubview(panel)
             NSLayoutConstraint.activate([
@@ -79,6 +85,28 @@ final class FCPCaptionExtensionViewController: NSViewController {
             try FinalCutPro.open(url)
         } catch {
             Self.log.error("delivery failed: \(error.localizedDescription, privacy: .public)")
+            NSAlert(error: error).runModal()
+        }
+    }
+
+    /// Saves the caption file wherever the user says.
+    ///
+    /// A save panel rather than a fixed location: the extension is sandboxed, so the only place it
+    /// can write without asking is its own container — which is exactly where nobody can find a
+    /// file from Final Cut Pro's import dialog.
+    @MainActor
+    private static func saveCaptionFile(_ contents: String, named name: String) {
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = name
+        panel.allowedContentTypes = [.init(filenameExtension: "itt") ?? .xml]
+        panel.canCreateDirectories = true
+        panel.message = "저장한 뒤 Final Cut Pro에서 File ▸ Import ▸ Captions… 로 여세요."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        do {
+            try contents.write(to: url, atomically: true, encoding: .utf8)
+            Self.log.notice("caption file saved")
+        } catch {
+            Self.log.error("caption file save failed: \(error.localizedDescription, privacy: .public)")
             NSAlert(error: error).runModal()
         }
     }

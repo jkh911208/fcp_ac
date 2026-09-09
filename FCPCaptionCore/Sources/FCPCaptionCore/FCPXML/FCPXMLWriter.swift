@@ -70,12 +70,13 @@ public struct FCPXMLWriter: Sendable {
         for placement in free {
             let styleID = "ts\(nextStyleID)"
             nextStyleID += 1
-            target.addChild(captionElement(placement.caption,
-                                           start: placement.start,
-                                           duration: placement.end - placement.start,
-                                           frameDuration: frameDuration,
-                                           styleID: styleID,
-                                           lane: lane))
+            insert(captionElement(placement.caption,
+                                  start: placement.start,
+                                  duration: placement.end - placement.start,
+                                  frameDuration: frameDuration,
+                                  styleID: styleID,
+                                  lane: lane),
+                   into: target)
         }
 
         // Final Cut Pro's own exports carry no standalone declaration, and pretty-printed
@@ -236,6 +237,34 @@ public struct FCPXMLWriter: Sendable {
         element.addChild(definition)
 
         return element
+    }
+
+    /// Elements that must come *after* an anchored item, from Apple's own DTD. A clip's content
+    /// model is
+    ///
+    ///     (note?, %timing-params;, %intrinsic-params;, (%anchor_item;)*, (%marker_item;)*,
+    ///      audio-channel-source*, (%video_filter_item;)*, filter-audio*, metadata?)
+    ///
+    /// and `caption` is an `%anchor_item;`. Appending to the end therefore only works on a clip
+    /// that happens to have none of these — which the reference export did, and a real clip with a
+    /// Dialogue-1/Dialogue-2 audio configuration did not: Final Cut Pro refused the import with
+    /// "Element asset-clip content does not follow the DTD".
+    private static let elementsAfterAnchoredItems: Set<String> = [
+        "marker", "chapter-marker", "rating", "keyword", "analysis-marker", "hidden-clip-marker",
+        "audio-channel-source", "filter-video", "filter-video-mask", "filter-audio", "metadata",
+    ]
+
+    /// Puts a caption where the DTD says an anchored item goes: after any that are already there,
+    /// and before the first element belonging to a later group.
+    private func insert(_ caption: XMLElement, into clip: XMLElement) {
+        let children = clip.children?.compactMap { $0 as? XMLElement } ?? []
+        guard let boundary = children.firstIndex(where: {
+            Self.elementsAfterAnchoredItems.contains($0.name ?? "")
+        }) else {
+            clip.addChild(caption)
+            return
+        }
+        clip.insertChild(caption, at: clip.children?.firstIndex(of: children[boundary]) ?? boundary)
     }
 
     // MARK: - Locating

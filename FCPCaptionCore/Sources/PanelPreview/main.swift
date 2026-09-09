@@ -54,7 +54,7 @@ func run() {
     // The settings screen renders as its own state for review, like the rest.
     let settingsModel = model(.waiting)
     settingsModel.showsSettings = true
-    render(PanelView(model: settingsModel, onOpenInFinalCut: { _ in }),
+    render(PanelView(model: settingsModel, onOpenInFinalCut: { _ in }, onSaveCaptionFile: { _, _ in }),
            to: directory.appending(path: "panel-6-settings-\(appearance == .darkAqua ? "dark" : "light").png"),
            appearance: appearance)
 
@@ -67,7 +67,8 @@ func run() {
         ("3c-loading", .working(.init(stage: .loadingModel, fraction: 0,
                                       detail: "이 모델을 처음 쓸 때만 몇 분 걸립니다. 다음부터는 바로 시작합니다."))),
         ("4-finished", .finished(.init(captionCount: 37, clipName: clip.name,
-                                       output: URL(filePath: "/tmp/out.fcpxml")))),
+                                       output: URL(filePath: "/tmp/out.fcpxml"),
+                                       captionFile: "<tt/>", captionFileName: "인터뷰.itt"))),
         ("5-failed", .failed(message: "음성 인식 모델(large-v3-turbo)을 준비하지 못했습니다. 네트워크 연결과 디스크 여유 공간을 확인해 주세요.",
                              canRetry: true)),
     ]

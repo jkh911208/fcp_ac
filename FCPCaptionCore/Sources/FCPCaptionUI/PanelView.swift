@@ -9,10 +9,16 @@ import SwiftUI
 public struct PanelView: View {
     @Bindable var model: PanelModel
     var onOpenInFinalCut: (URL) -> Void
+    var onSaveCaptionFile: ((String, String) -> Void)?
 
-    public init(model: PanelModel, onOpenInFinalCut: @escaping (URL) -> Void) {
+    public init(
+        model: PanelModel,
+        onOpenInFinalCut: @escaping (URL) -> Void,
+        onSaveCaptionFile: ((String, String) -> Void)? = nil
+    ) {
         self.model = model
         self.onOpenInFinalCut = onOpenInFinalCut
+        self.onSaveCaptionFile = onSaveCaptionFile
     }
 
     public var body: some View {
@@ -156,17 +162,35 @@ public struct PanelView: View {
             Label("자막 \(finished.captionCount)개를 만들었습니다", systemImage: "checkmark.circle.fill")
                 .font(.headline)
                 .foregroundStyle(.green)
-            Text("\(finished.clipCount > 1 ? "클립 \(finished.clipCount)개" : finished.clipName) · Final Cut Pro에서 열면 자막이 들어간 프로젝트를 가져옵니다.")
+            Text(finished.clipCount > 1 ? "클립 \(finished.clipCount)개" : finished.clipName)
                 .font(.callout)
                 .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
             if finished.skipped > 0 {
                 Label("\(finished.skipped)개는 기존 자막과 시간이 겹쳐 건너뛰었습니다", systemImage: "info.circle")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            wideButton("Final Cut Pro에서 열기", prominent: true) { onOpenInFinalCut(finished.output) }
+            // Two routes, and the difference matters: a caption file lands on the timeline you
+            // are editing, while importing FCPXML brings a *copy* of the event and project into
+            // the library. Saying which is which here saves discovering it afterwards.
+            if let captionFile = finished.captionFile, let onSaveCaptionFile {
+                VStack(alignment: .leading, spacing: 4) {
+                    wideButton("자막 파일 저장", prominent: true) {
+                        onSaveCaptionFile(captionFile, finished.captionFileName)
+                    }
+                    Text("저장한 뒤 Final Cut Pro에서 **File ▸ Import ▸ Captions…** 로 열면\n지금 편집 중인 프로젝트에 그대로 들어갑니다.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                wideButton("Final Cut Pro로 보내기") { onOpenInFinalCut(finished.output) }
+                Text("프로젝트 사본이 라이브러리에 새로 생깁니다.")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
             wideButton("다른 클립 자막 만들기") { model.reset() }
         }
     }

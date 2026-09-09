@@ -64,6 +64,27 @@ public struct CaptionPipeline: Sendable {
         public var clips: [ClipResult]
 
         public var captions: [Caption] { clips.flatMap(\.captions) }
+        /// The sequence's frame duration, needed to write a caption file's SMPTE timecodes.
+        public var frameDuration: FCPTime?
+
+        /// Captions positioned against the **timeline** rather than each clip, which is how a
+        /// caption file is read. Final Cut Pro imports one of these straight onto the project that
+        /// is already open — no new event, no new project, no dialog.
+        public var timelineCaptions: [Caption] {
+            clips.flatMap { result in
+                result.captions.map { caption in
+                    Caption(lines: caption.lines,
+                            start: caption.start + result.clip.offset.seconds,
+                            end: caption.end + result.clip.offset.seconds)
+                }
+            }
+        }
+
+        /// An iTT caption file for the whole timeline, or nil when the document had no frame rate.
+        public func captionFile(language: String) -> String? {
+            guard let frameDuration else { return nil }
+            return ITTWriter(language: language).string(from: timelineCaptions, frameDuration: frameDuration)
+        }
         public var words: Int { clips.reduce(0) { $0 + $1.words } }
         /// Captions that could not be placed because the editor's own captions already held that
         /// time. Reported, never silently dropped.
@@ -172,7 +193,9 @@ public struct CaptionPipeline: Sendable {
             throw CaptionPipelineError.noSpeechFound
         }
         progress(Report(stage: .writingDocument, fraction: 1))
-        return Result(document: document, clips: results)
+        var result = Result(document: document, clips: results)
+        result.frameDuration = parsed.frameDuration
+        return result
     }
 
     private func caption(

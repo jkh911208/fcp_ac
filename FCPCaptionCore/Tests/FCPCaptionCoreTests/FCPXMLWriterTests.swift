@@ -357,3 +357,89 @@ struct FCPXMLWriterExistingCaptionTests {
         #expect(original.lane == 1)
     }
 }
+
+/// Where a caption goes inside a clip.
+///
+/// Apple's DTD orders a clip's children, and `caption` is an anchored item: it must land after the
+/// timing and adjust elements and **before** markers, `audio-channel-source`, filters and
+/// metadata. The reference export had none of those, so appending worked; a real clip with a
+/// Dialogue-1/Dialogue-2 audio configuration does have one, and Final Cut Pro refused the whole
+/// import over it.
+struct FCPXMLWriterElementOrderTests {
+    let reader = FCPXMLReader()
+    let writer = FCPXMLWriter()
+
+    /// A clip shaped like the one that failed: every group the DTD puts *after* an anchored item
+    /// is present, in the order the DTD wants them.
+    private let document = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <fcpxml version="1.14">
+      <resources>
+        <format id="r1" frameDuration="1001/60000s"/>
+        <asset id="r2" name="DJI" start="0s" duration="600s" format="r1" hasAudio="1" audioSources="2">
+          <media-rep kind="original-media" src="file:///Users/example/Movies/DJI.MP4"/>
+        </asset>
+        <effect id="r3" name="Loudness" uid="FFAudioLoudness"/>
+      </resources>
+      <library><event name="E"><project name="P">
+        <sequence format="r1" duration="60s" tcStart="0s"><spine>
+          <asset-clip ref="r2" offset="0s" name="DJI" start="0s" duration="60s">
+            <conform-rate srcFrameRate="60"/>
+            <adjust-volume amount="3dB"/>
+            <marker start="5s" duration="1001/60000s" value="여기"/>
+            <audio-channel-source srcCh="1, 2" role="dialogue"/>
+            <filter-audio ref="r3" name="Loudness"/>
+            <metadata><md key="com.apple.proapps.studio.cameraISO" value="0"/></metadata>
+          </asset-clip>
+        </spine></sequence>
+      </project></event></library>
+    </fcpxml>
+    """
+
+    private func written() throws -> XMLElement {
+        let data = Data(document.utf8)
+        let clip = try #require(try reader.read(data: data).clips.first)
+        let output = try writer.addingCaptions([
+            Caption(lines: ["하나"], start: 1, end: 3),
+            Caption(lines: ["둘"], start: 4, end: 6),
+        ], to: clip, inDocument: data)
+        let xml = try XMLDocument(data: output)
+        return try #require(try xml.nodes(forXPath: "//asset-clip").compactMap { $0 as? XMLElement }.first)
+    }
+
+    @Test func captionsLandBeforeTheElementsThatMustFollowThem() throws {
+        let names = try written().children?.compactMap { ($0 as? XMLElement)?.name } ?? []
+        let lastCaption = try #require(names.lastIndex(of: "caption"))
+        for later in ["audio-channel-source", "marker", "filter-audio", "metadata"] {
+            let index = try #require(names.firstIndex(of: later), "\(later) missing")
+            #expect(lastCaption < index, "caption must precede \(later), got \(names)")
+        }
+    }
+
+    @Test func captionsLandAfterTheElementsThatMustPrecedeThem() throws {
+        let names = try written().children?.compactMap { ($0 as? XMLElement)?.name } ?? []
+        let firstCaption = try #require(names.firstIndex(of: "caption"))
+        for earlier in ["conform-rate", "adjust-volume"] {
+            let index = try #require(names.firstIndex(of: earlier), "\(earlier) missing")
+            #expect(index < firstCaption, "\(earlier) must precede caption, got \(names)")
+        }
+    }
+
+    @Test func capionsKeepTheirOwnOrder() throws {
+        let captions = try written().nodes(forXPath: "caption").compactMap { $0 as? XMLElement }
+        #expect(captions.count == 2)
+        let offsets = try captions.map { try FCPTime.parse($0.attribute(forName: "offset")!.stringValue!) }
+        #expect(offsets[0] < offsets[1])
+    }
+
+    /// The check that would actually have caught this: Apple's own DTD, on a clip shaped like a
+    /// real one rather than like the fixture.
+    @Test(.enabled(if: Fixture.DTD.isAvailable))
+    func aRichClipStillValidatesAgainstApplesDTD() throws {
+        let data = Data(document.utf8)
+        let clip = try #require(try reader.read(data: data).clips.first)
+        let output = try writer.addingCaptions([Caption(lines: ["가"], start: 1, end: 3)],
+                                               to: clip, inDocument: data)
+        #expect(try Fixture.DTD.validate(output) == nil)
+    }
+}
