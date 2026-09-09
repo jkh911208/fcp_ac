@@ -182,6 +182,14 @@ click path, is in `docs/XCODE_SETUP.md`.
 4. M2 is now half-answered by the SDK headers. What remains is only *which* delivery path works:
    dragging FCPXML from the panel into the timeline, or opening the file for import.
 
+**M4 (OpenRouter engine, Keychain, Settings) is deferred** — the user's call, 2026-09-09. The
+`TranscriptionEngine` protocol and the injectable base URL stay as the spec sanctions them, but
+nothing else is built for it. Order is now M3 (local end to end in the panel) → M5 (release).
+Costs were checked while the question was open, and they are not the reason to hurry: an 18-minute
+clip is about **1 cent** on `openai/whisper-large-v3` and a third of that on turbo. The real case
+for the cloud engine is that it needs no 3 GB download, no ten-minute Neural Engine compile and no
+6 GB of RAM on first run.
+
 ## Blocked on the user
 
 | What | Needed for | Why it can't be done here |
