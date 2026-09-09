@@ -56,7 +56,13 @@ public struct ClipRef: Sendable, Equatable {
     public var name: String
     /// Where the clip sits on the parent timeline.
     public var offset: FCPTime
-    /// Where playback starts *inside* the media. Caption offsets are relative to this, not to 0.
+    /// Where playback starts, in the asset's own time base. Caption offsets are relative to this,
+    /// not to 0.
+    ///
+    /// **This is not an offset into the file.** A camera file carries a start timecode — a DJI
+    /// clip shot at 17:12 reports `start` around 61,920s for a media file 1,101s long — and both
+    /// the asset and the clips that use it are expressed in that base. Subtract `assetStart` to
+    /// get a position inside the file; `mediaRange` does it for you.
     public var start: FCPTime
     public var duration: FCPTime
     public var lane: Int?
@@ -68,6 +74,8 @@ public struct ClipRef: Sendable, Equatable {
     /// unreadable — `/Users/…/Downloads/clip.MOV` exists and still cannot be opened. The bookmark
     /// is the grant that makes it readable, which is why FCP ships one with every asset.
     public var mediaBookmark: Data?
+    /// The asset's own `start` — its timecode origin, and the zero point `start` is measured from.
+    public var assetStart: FCPTime
     /// The asset's own format, which may differ from the sequence's (conformed clips).
     public var assetFrameDuration: FCPTime?
     public var hasAudio: Bool
@@ -84,6 +92,7 @@ public struct ClipRef: Sendable, Equatable {
         lane: Int? = nil,
         mediaURL: URL? = nil,
         mediaBookmark: Data? = nil,
+        assetStart: FCPTime = .zero,
         assetFrameDuration: FCPTime? = nil,
         hasAudio: Bool = true,
         captions: [CaptionRef] = []
@@ -97,12 +106,22 @@ public struct ClipRef: Sendable, Equatable {
         self.lane = lane
         self.mediaURL = mediaURL
         self.mediaBookmark = mediaBookmark
+        self.assetStart = assetStart
         self.assetFrameDuration = assetFrameDuration
         self.hasAudio = hasAudio
         self.captions = captions
     }
 
     public var durationSeconds: TimeInterval { duration.seconds }
+
+    /// Where this clip sits **inside the media file**, in seconds.
+    ///
+    /// The timeline speaks the asset's timecode; `AVAsset` speaks seconds from the start of the
+    /// file. Getting this wrong on a camera file asks for the 61,920-second mark of a
+    /// 1,101-second recording.
+    public var mediaStartSeconds: TimeInterval {
+        max(0, (start - assetStart).seconds)
+    }
 }
 
 /// A `<caption>` element as it stands in the document.

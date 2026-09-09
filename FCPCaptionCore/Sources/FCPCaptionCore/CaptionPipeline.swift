@@ -190,7 +190,7 @@ public struct CaptionPipeline: Sendable {
         // Only the part of the media the clip actually uses — captioning trimmed-away footage
         // would put captions where nothing is said.
         let range = CMTimeRange(
-            start: CMTime(seconds: clip.start.seconds, preferredTimescale: 600),
+            start: CMTime(seconds: clip.mediaStartSeconds, preferredTimescale: 600),
             duration: CMTime(seconds: clip.duration.seconds, preferredTimescale: 600)
         )
         progress(Report(stage: .extractingAudio, fraction: 0))

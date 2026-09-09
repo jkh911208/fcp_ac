@@ -59,6 +59,12 @@ struct Arguments {
                 language = (name == "auto") ? nil : name
             case "--workers":
                 engineOptions.concurrentWorkerCount = Int(try value()) ?? 16
+            case "--compute":
+                let name = try value()
+                guard let units = WhisperKitEngine.ComputeUnits(rawValue: name) else {
+                    throw CLIError.unknownOption("--compute \(name)")
+                }
+                engineOptions.computeUnits = units
             case "--fallbacks":
                 engineOptions.temperatureFallbackCount = Int(try value()) ?? 5
             case "--output", "-o":
@@ -112,6 +118,7 @@ enum CLIError: LocalizedError {
           -o, --output    저장 경로 (기본: 입력 파일과 같은 위치)
               --workers   동시 디코딩 윈도우 수 (기본 16)
               --fallbacks 품질 미달 시 온도를 올려 재시도하는 횟수 (기본 5)
+              --compute   neuralEngine (기본) | gpu | all
         """
     }
 }

@@ -120,3 +120,54 @@ struct FCPXMLReaderTests {
         #expect(document.clips[0].start == FCPTime(3600))
     }
 }
+
+/// Camera files carry a start timecode, and the timeline speaks in it. Getting this wrong asks
+/// AVFoundation for the 61,920-second mark of a 1,101-second recording — which is exactly what a
+/// DJI clip shot at 17:12 did, in the panel, on a real project.
+struct AssetTimecodeOriginTests {
+    /// An 18-minute file whose timecode starts at 17:12:00, used from 17:13:00 for 60 seconds.
+    private let document = """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <fcpxml version="1.14">
+      <resources>
+        <format id="r1" frameDuration="1001/60000s"/>
+        <asset id="r2" name="DJI_0147" start="61920s" duration="1101s" format="r1" hasAudio="1">
+          <media-rep kind="original-media" src="file:///Users/example/Movies/DJI_0147.MP4"/>
+        </asset>
+      </resources>
+      <library><event name="E"><project name="P">
+        <sequence format="r1" duration="60s" tcStart="0s"><spine>
+          <asset-clip ref="r2" offset="0s" name="DJI_0147" start="61980s" duration="60s"/>
+        </spine></sequence>
+      </project></event></library>
+    </fcpxml>
+    """
+
+    @Test func theAssetsTimecodeOriginIsKept() throws {
+        let clip = try #require(try FCPXMLReader().read(data: Data(document.utf8)).clips.first)
+        #expect(clip.start == FCPTime(61980))
+        #expect(clip.assetStart == FCPTime(61920))
+    }
+
+    @Test func theMediaOffsetSubtractsThatOrigin() throws {
+        let clip = try #require(try FCPXMLReader().read(data: Data(document.utf8)).clips.first)
+        // 17:13:00 minus 17:12:00 — one minute into a file that is eighteen minutes long.
+        #expect(clip.mediaStartSeconds == 60)
+        #expect(clip.mediaStartSeconds < clip.start.seconds)
+    }
+
+    @Test func aFileWithNoTimecodeIsUnaffected() throws {
+        // The reference export: asset start 0, so the clip's start is already a file offset.
+        let clip = try #require(try FCPXMLReader()
+            .read(data: try Fixture.data("caption_one_clip.fcpxml")).clips.first)
+        #expect(clip.assetStart == .zero)
+        #expect(clip.mediaStartSeconds == clip.start.seconds)
+    }
+
+    @Test func anImpossibleOriginClampsRatherThanGoingNegative() {
+        let clip = ClipRef(element: "asset-clip", assetID: "r2", name: "x",
+                           offset: .zero, start: FCPTime(10), duration: FCPTime(5),
+                           assetStart: FCPTime(100))
+        #expect(clip.mediaStartSeconds == 0)
+    }
+}

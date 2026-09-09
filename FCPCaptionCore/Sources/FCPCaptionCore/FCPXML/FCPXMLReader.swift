@@ -160,6 +160,7 @@ public struct FCPXMLReader: Sendable {
             lane: element.attribute(forName: "lane")?.stringValue.flatMap(Int.init),
             mediaURL: asset?.mediaURL,
             mediaBookmark: asset?.mediaBookmark,
+            assetStart: asset?.start ?? .zero,
             assetFrameDuration: asset?.formatID.flatMap { formats[$0] },
             hasAudio: asset?.hasAudio ?? true,
             captions: try captions(in: element)

@@ -30,18 +30,56 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
     ///
     /// So the defaults stay WhisperKit's. A caption that shifts slightly between runs is a
     /// nuisance; a minute of missing dialogue is a broken subtitle track.
+    /// Where the model runs.
+    ///
+    /// This is not only a speed dial: targeting the Neural Engine means CoreML compiles the model
+    /// for it on first use, which for large-v3 is about ten minutes at 6 GB of RAM, once per model
+    /// per macOS build. The GPU path skips that compile entirely.
+    public enum ComputeUnits: String, Sendable, Equatable, Codable, CaseIterable {
+        /// WhisperKit's macOS default: encoder and decoder on the Neural Engine.
+        case neuralEngine
+        /// No Neural Engine, so no ANE compile on first use.
+        case gpu
+        /// Let CoreML decide.
+        case all
+
+        public var displayName: String {
+            switch self {
+            case .neuralEngine: "Neural Engine"
+            case .gpu: "GPU"
+            case .all: "자동"
+            }
+        }
+    }
+
     public struct Options: Sendable, Equatable, Codable {
         /// Windows decoded at once. WhisperKit's macOS default is 16.
         public var concurrentWorkerCount: Int
+        public var computeUnits: ComputeUnits
         /// Retries at rising temperature when a window's decode looks degenerate.
         ///
         /// Set to 0 for a run that repeats exactly — at the cost of losing whatever the retries
         /// would have recovered.
         public var temperatureFallbackCount: Int
 
-        public init(concurrentWorkerCount: Int = 16, temperatureFallbackCount: Int = 5) {
+        public init(
+            concurrentWorkerCount: Int = 16,
+            temperatureFallbackCount: Int = 5,
+            computeUnits: ComputeUnits = .neuralEngine
+        ) {
             self.concurrentWorkerCount = max(1, concurrentWorkerCount)
             self.temperatureFallbackCount = max(0, temperatureFallbackCount)
+            self.computeUnits = computeUnits
+        }
+
+        // Older stored settings predate this field; decoding must not fail over it.
+        public init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            self.init(
+                concurrentWorkerCount: try container.decodeIfPresent(Int.self, forKey: .concurrentWorkerCount) ?? 16,
+                temperatureFallbackCount: try container.decodeIfPresent(Int.self, forKey: .temperatureFallbackCount) ?? 5,
+                computeUnits: try container.decodeIfPresent(ComputeUnits.self, forKey: .computeUnits) ?? .neuralEngine
+            )
         }
 
         /// The default: recovers difficult passages, and does not repeat exactly.
@@ -179,6 +217,7 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
 
             let config = WhisperKitConfig(
                 modelFolder: folder.path(percentEncoded: false),
+                computeOptions: options.modelComputeOptions,
                 verbose: false,
                 logLevel: .error,
                 prewarm: false,
@@ -256,6 +295,19 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
 
     private func checkCancellation() throws {
         if isCancelRequested || Task.isCancelled { throw CancellationError() }
+    }
+}
+
+extension WhisperKitEngine.Options {
+    var modelComputeOptions: ModelComputeOptions {
+        switch computeUnits {
+        case .neuralEngine:
+            ModelComputeOptions(audioEncoderCompute: .cpuAndNeuralEngine, textDecoderCompute: .cpuAndNeuralEngine)
+        case .gpu:
+            ModelComputeOptions(melCompute: .cpuAndGPU, audioEncoderCompute: .cpuAndGPU, textDecoderCompute: .cpuAndGPU)
+        case .all:
+            ModelComputeOptions(melCompute: .all, audioEncoderCompute: .all, textDecoderCompute: .all)
+        }
     }
 }
 
