@@ -77,7 +77,7 @@ app.build_configurations.each do |config|
     'INFOPLIST_FILE' => 'FCPCaption/Info.plist',
     'CODE_SIGN_ENTITLEMENTS' => 'FCPCaption/FCPCaption.entitlements',
     'ENABLE_APP_SANDBOX' => 'YES',
-    'MARKETING_VERSION' => '0.1.1',
+    'MARKETING_VERSION' => '0.1.2',
     'CURRENT_PROJECT_VERSION' => '1',
     'COMBINE_HIDPI_IMAGES' => 'YES',
     'LD_RUNPATH_SEARCH_PATHS' => ['$(inherited)', '@executable_path/../Frameworks'],
@@ -105,7 +105,7 @@ extension_target.build_configurations.each do |config|
     # initialization of the principal ViewController class from a background thread". The packages
     # stay on Swift 6; only the target the host instantiates steps back.
     'SWIFT_VERSION' => '5.0',
-    'MARKETING_VERSION' => '0.1.1',
+    'MARKETING_VERSION' => '0.1.2',
     'CURRENT_PROJECT_VERSION' => '1',
     'COMBINE_HIDPI_IMAGES' => 'YES',
     # Xcode 16's debug dylib turns the executable into a stub that loads the real code from a
