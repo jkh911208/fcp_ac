@@ -3,6 +3,21 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
+**Scope change (2026-09-09, user's decision):** the panel will offer **captions and titles**, not
+just captions. Spec §4.2 puts styled title templates out of v1 — that is being reversed, because
+Final Cut Pro's caption inspector offers no font control at all while its Subtitle *title*
+template offers every one. The two are different things and both are wanted: captions carry a
+subtitle track that can be exported and toggled, titles are text burned into the picture. They
+coexist on one timeline, so "both" is a real option and not a compromise.
+
+Confirmed along the way: **Final Cut Pro does render the `text-style` we write into a caption** —
+40pt Helvetica in yellow came through — it simply gives no way to change it afterwards. So the
+style controls are worth having on either route; what titles add is editability in FCP.
+
+Waiting on a fixture: a project with FCP's built-in Subtitle title, exported as FCPXML, to learn
+the effect `uid` and the `<title>` element's shape. Guessing that string is how `iTT?captions.ko`
+would have happened again.
+
 **Last updated:** 2026-09-09 · **M2 is answered — see below.** Current milestone: M1 in progress. **The pipeline works end to
 end from the command line** — see "Use it today" in the README. Only the extension shell is missing,
 and it is blocked on an Apple SDK download.
