@@ -52,13 +52,18 @@ public struct PanelView: View {
             Image(systemName: "text.bubble")
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("타임라인에서 클립을\n여기로 끌어다 놓으세요")
+            Text("브라우저에서 프로젝트나 클립을\n여기로 끌어다 놓으세요")
                 .font(.callout)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+            // Final Cut Pro only starts drags from the sidebar and the browser — never from the
+            // timeline. Saying so costs a line and saves the "why doesn't this work" minute.
+            Text("타임라인에서는 드래그할 수 없습니다")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 34)
+        .padding(.vertical, 28)
         .background(
             RoundedRectangle(cornerRadius: 10)
                 .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5, 4]))

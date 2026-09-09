@@ -15,25 +15,37 @@ final class CaptionDropView: NSView {
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
-        registerForDraggedTypes([
-            NSPasteboard.PasteboardType(DroppedDocument.fcpxmlType.identifier),
-            NSPasteboard.PasteboardType(DroppedDocument.fcpxmlBundleType.identifier),
-            NSPasteboard.PasteboardType("com.apple.finalcutpro.xml"),
-            .fileURL,
-            NSPasteboard.PasteboardType(UTType.xml.identifier),
-        ])
+        registerForDraggedTypes(Self.acceptedTypes)
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        registerForDraggedTypes([.fileURL, NSPasteboard.PasteboardType("com.apple.finalcutpro.xml")])
+        registerForDraggedTypes(Self.acceptedTypes)
     }
+
+    /// Version-specific types first, the way Apple's own sample orders them, then the generic one,
+    /// then a dropped file for the export-and-drop case.
+    private static let acceptedTypes: [NSPasteboard.PasteboardType] = {
+        let identifiers = [
+            "com.apple.finalcutpro.xml.v1-14",
+            "com.apple.finalcutpro.xml.v1-13",
+            "com.apple.finalcutpro.xml.v1-11",
+            "com.apple.finalcutpro.xml.v1-10",
+            "com.apple.finalcutpro.xml.v1-9",
+            "com.apple.finalcutpro.xml",
+            DroppedDocument.fcpxmlType.identifier,
+            DroppedDocument.fcpxmlBundleType.identifier,
+        ]
+        var types = identifiers.map { NSPasteboard.PasteboardType($0) }
+        types.append(.fileURL)
+        return types
+    }()
 
     override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
         // Log every type on the pasteboard, once per drag. This is the only way to learn what FCP
         // actually sends, and it is a fact worth writing down rather than guessing at.
         let types = sender.draggingPasteboard.types?.map(\.rawValue).joined(separator: ", ") ?? "none"
-        Self.log.info("drag entered with types: \(types, privacy: .public)")
+        Self.log.notice("drag entered with types: \(types, privacy: .public)")
         return .copy
     }
 
@@ -42,7 +54,7 @@ final class CaptionDropView: NSView {
 
         for type in pasteboard.types ?? [] where type.rawValue.contains("finalcutpro") || type.rawValue.contains("FinalCutPro") {
             if let data = pasteboard.data(forType: type), !data.isEmpty {
-                Self.log.info("using pasteboard data of type \(type.rawValue, privacy: .public)")
+                Self.log.notice("using pasteboard data of type \(type.rawValue, privacy: .public)")
                 onDrop?(data)
                 return true
             }
@@ -51,7 +63,7 @@ final class CaptionDropView: NSView {
         if let urls = pasteboard.readObjects(forClasses: [NSURL.self]) as? [URL],
            let url = urls.first(where: { ["fcpxml", "fcpxmld"].contains($0.pathExtension.lowercased()) }) ?? urls.first {
             do {
-                Self.log.info("using dropped file \(url.lastPathComponent, privacy: .public)")
+                Self.log.notice("using dropped file \(url.lastPathComponent, privacy: .public)")
                 onDrop?(try DroppedDocument.data(atFile: url))
                 return true
             } catch {

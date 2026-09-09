@@ -48,7 +48,7 @@ final class FCPCaptionExtensionViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         if let host = ProExtensionHostSingleton() as? FCPXHost {
-            Self.log.info("host: \(host.name, privacy: .public) \(host.versionString, privacy: .public)")
+            Self.log.notice("host: \(host.name, privacy: .public) \(host.versionString, privacy: .public)")
         } else {
             // Not fatal — the panel still works, we just don't know who is hosting it.
             Self.log.error("host singleton did not conform to FCPXHost")

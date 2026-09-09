@@ -98,6 +98,30 @@ lane** — separate lanes did not save us. The writer now trims its captions cle
 caption in the same language, skips one that would have to be split around theirs, never alters
 what the editor wrote, and reports how many it skipped so a missing caption is never silent.
 
+### The local model default, measured (2026-09-09)
+
+Both models, same 18m20s Korean clip, model already downloaded:
+
+| | large-v3 | large-v3-turbo |
+|---|---|---|
+| Time | 398s (0.36× real time) | **120s (0.11×)** |
+| Words → captions | 1201 → 243 | 1246 → 262 |
+| A 60-minute clip | ~22 min | ~6.5 min |
+| Download | 3.0 GB | 1.5 GB |
+| First run also | ~10 min ANE compile, 6.3 GB RAM | shorter |
+
+Their transcripts are only **60% character-similar**, and the difference has a shape: turbo catches
+more speech (whole utterances large-v3 drops), and large-v3 writes what it catches more correctly —
+`나머지` against `나무지`, `강아지` against `강 아지`, `다르나` against `다르니라`. Turbo also
+injects speaker dashes.
+
+**large-v3 stays the default.** A missed line is something an editor notices and fills in; a
+mangled word goes out on screen. Turbo remains the option for a fast first pass, described as such
+in Settings.
+
+A 24-second sample had said the opposite, and was nearly acted on. One short clip is not a
+measurement.
+
 ### M1 — the panel, and what the SDK settled (this branch)
 
 The user installed the **Workflow Extensions SDK v1.0.3** (2026-09-09). Reading it answered the
@@ -159,9 +183,11 @@ click path, is in `docs/XCODE_SETUP.md`.
   internally, which is fine on device. The spec's 5-minute chunks with 2s overlap are still needed
   for the OpenRouter engine (upload size) — build them when M4 makes the requirement concrete.
   A 60-minute clip has not been tried; 16 kHz mono float for an hour is ~230 MB in memory.
-- **Caption quality is spot-checked, not measured.** One 24.5s real clip and one synthesized
-  sample. The ±0.3s timing bar in the spec's definition of done has not been measured against
-  anything. Needs the 1/15/60-minute clips.
+- **Timing accuracy is still unmeasured.** The spec's ±0.3s bar (§15.2) has not been checked
+  against anything; that needs the playhead and a human ear, and it is in `docs/MANUAL_TEST.md`.
+  Transcription quality itself is now measured on 18 minutes — see the model comparison above.
+- **A 60-minute clip has not been tried.** Extrapolating, large-v3 would take ~22 minutes and hold
+  about 230 MB of audio in memory.
 - ~~The caption language of an imported `.srt` is unverified.~~ **It arrives as English.** Final
   Cut Pro's own caption inspector says `Format SRT | Language English`, because SubRip has nowhere
   to record a language. Fixed by writing **iTT** instead: `Fixtures/caption_korean.itt` is a real
