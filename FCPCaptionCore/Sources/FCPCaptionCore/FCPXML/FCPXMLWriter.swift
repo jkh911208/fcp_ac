@@ -16,15 +16,12 @@ public struct FCPXMLWriter: Sendable {
     /// Automatic means: lane 1 when the clip has no captions, otherwise one above the highest
     /// lane already in use, which is also how a second language would sit alongside a first.
     public var lane: Int?
-    /// The font FCP chose for a Korean caption in the reference export.
-    public var font: String
-    public var fontSize: Int
+    public var style: CaptionStyle
 
-    public init(language: String = "ko", lane: Int? = nil, font: String = ".Apple SD Gothic NeoI", fontSize: Int = 13) {
+    public init(language: String = "ko", lane: Int? = nil, style: CaptionStyle = .default) {
         self.language = language
         self.lane = lane
-        self.font = font
-        self.fontSize = fontSize
+        self.style = style
     }
 
     public var role: String { "iTT?captionFormat=ITT.\(language)" }
@@ -225,15 +222,9 @@ public struct FCPXMLWriter: Sendable {
 
         let definition = XMLElement(name: "text-style-def")
         definition.setOrderedAttributes([("id", styleID)])
-        let style = XMLElement(name: "text-style")
-        style.setOrderedAttributes([
-            ("font", font),
-            ("fontSize", String(fontSize)),
-            ("fontFace", "Regular"),
-            ("fontColor", "1 1 1 1"),
-            ("backgroundColor", "0 0 0 1"),
-        ])
-        definition.addChild(style)
+        let styleElement = XMLElement(name: "text-style")
+        styleElement.setOrderedAttributes(style.fcpxmlAttributes)
+        definition.addChild(styleElement)
         element.addChild(definition)
 
         return element

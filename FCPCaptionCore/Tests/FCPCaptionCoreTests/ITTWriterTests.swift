@@ -130,3 +130,107 @@ struct ITTWriterTests {
         #expect(throws: Never.self) { try XMLDocument(data: Data(itt.utf8)) }
     }
 }
+
+/// Caption appearance. Every FCPXML `text-style` attribute is settable; an iTT caption file
+/// carries the subset TTML has a place for, and Settings says which is which.
+struct CaptionStyleTests {
+    @Test func theDefaultMatchesWhatFinalCutProWrites() {
+        let style = CaptionStyle.default
+        #expect(style.fcpxmlFontName == ".Apple SD Gothic NeoI")
+        #expect(style.fontSize == 13)
+        #expect(style.ittFontSizePercent == 100)
+    }
+
+    @Test func sizeScalesTheCaptionFilePercentage() {
+        #expect(CaptionStyle(fontSize: 26).ittFontSizePercent == 200)
+        #expect(CaptionStyle(fontSize: 13).ittFontSizePercent == 100)
+        // TTML has no point sizes, and a floor keeps a silly setting from making captions invisible.
+        #expect(CaptionStyle(fontSize: 6).ittFontSizePercent >= 25)
+    }
+
+    @Test func sizeIsClampedToSomethingUsable() {
+        #expect(CaptionStyle(fontSize: 0).fontSize == 6)
+        #expect(CaptionStyle(fontSize: 500).fontSize == 96)
+    }
+
+    @Test func coloursAreWrittenTheWayEachFormatWantsThem() {
+        let red = CaptionColor(red: 1, green: 0, blue: 0, alpha: 0.5)
+        #expect(red.fcpxmlValue == "1 0 0 0.5")
+        #expect(red.ittValue == "#FF000080")
+        #expect(CaptionColor.white.ittValue == "#FFFFFFFF")
+    }
+
+    @Test func fcpxmlCarriesEverythingThatIsSet() {
+        let style = CaptionStyle(
+            fontSize: 20, bold: true, italic: true, underline: true, alignment: .left,
+            strokeColor: .white, strokeWidth: 2, fontName: "Apple SD Gothic Neo",
+            shadowDistance: 4, shadowBlurRadius: 3, kerning: 1.5, lineSpacing: 2, baselineOffset: -1
+        )
+        let attributes = Dictionary(uniqueKeysWithValues: style.fcpxmlAttributes)
+        #expect(attributes["font"] == "Apple SD Gothic Neo")
+        #expect(attributes["fontSize"] == "20")
+        #expect(attributes["bold"] == "1")
+        #expect(attributes["italic"] == "1")
+        #expect(attributes["underline"] == "1")
+        #expect(attributes["alignment"] == "left")
+        #expect(attributes["strokeWidth"] == "2")
+        #expect(attributes["shadowOffset"] == "4 315")
+        #expect(attributes["kerning"] == "1.5")
+        #expect(attributes["lineSpacing"] == "2")
+        #expect(attributes["baselineOffset"] == "-1")
+    }
+
+    /// Attributes that mean "off" are left out rather than written as zero — Final Cut Pro's own
+    /// export omits them, and an explicit `strokeWidth="0"` is a stroke, just an invisible one.
+    @Test func nothingIsWrittenForFeaturesThatAreOff() {
+        let attributes = Dictionary(uniqueKeysWithValues: CaptionStyle.default.fcpxmlAttributes)
+        #expect(attributes["bold"] == nil)
+        #expect(attributes["strokeWidth"] == nil)
+        #expect(attributes["shadowOffset"] == nil)
+        #expect(attributes["kerning"] == nil)
+    }
+
+    @Test func theCaptionFileCarriesOnlyWhatTTMLCanHold() {
+        let style = CaptionStyle(bold: true, underline: true, strokeWidth: 2,
+                                 fontName: "Apple SD Gothic Neo", kerning: 4, lineSpacing: 3)
+        let attributes = Dictionary(uniqueKeysWithValues: style.ittAttributes)
+        #expect(attributes["tts:fontWeight"] == "bold")
+        #expect(attributes["tts:textDecoration"] == "underline")
+        #expect(attributes["tts:textOutline"]?.contains("2px") == true)
+        // A font name has nowhere to go in TTML, so the generic family stands.
+        #expect(attributes["tts:fontFamily"] == "sansSerif")
+        #expect(attributes.keys.contains { $0.contains("kerning") } == false)
+        #expect(attributes.keys.contains { $0.contains("lineHeight") } == false)
+    }
+
+    @Test func theStyleReachesTheWrittenFiles() throws {
+        let style = CaptionStyle(fontSize: 26, bold: true, fontName: "Apple SD Gothic Neo")
+        let itt = ITTWriter(language: "ko", style: style)
+            .string(from: [Caption(lines: ["가"], start: 0, end: 1)], frameDuration: FCPTime(1001, 60000))
+        #expect(itt.contains("tts:fontSize=\"200%\""))
+        #expect(itt.contains("tts:fontWeight=\"bold\""))
+
+        let data = try Fixture.withoutCaptions("caption_one_clip.fcpxml")
+        let clip = try #require(try FCPXMLReader().read(data: data).clips.first)
+        let written = try FCPXMLWriter(style: style).addingCaptions(
+            [Caption(lines: ["가"], start: 0, end: 1)], to: clip, inDocument: data)
+        let text = String(decoding: written, as: UTF8.self)
+        #expect(text.contains("font=\"Apple SD Gothic Neo\""))
+        #expect(text.contains("fontSize=\"26\""))
+    }
+
+    /// The styled output still has to be something Final Cut Pro will import.
+    @Test(.enabled(if: Fixture.DTD.isAvailable))
+    func aFullyStyledCaptionStillValidates() throws {
+        let style = CaptionStyle(fontSize: 22, fontColor: .white, backgroundColor: .clear,
+                                 bold: true, italic: true, underline: true, alignment: .left,
+                                 strokeColor: .black, strokeWidth: 3, fontName: "Helvetica",
+                                 shadowDistance: 5, shadowBlurRadius: 4, kerning: 2,
+                                 lineSpacing: 4, baselineOffset: 2)
+        let data = try Fixture.withoutCaptions("caption_one_clip.fcpxml")
+        let clip = try #require(try FCPXMLReader().read(data: data).clips.first)
+        let written = try FCPXMLWriter(style: style).addingCaptions(
+            [Caption(lines: ["가", "나"], start: 0, end: 2)], to: clip, inDocument: data)
+        #expect(try Fixture.DTD.validate(written) == nil)
+    }
+}

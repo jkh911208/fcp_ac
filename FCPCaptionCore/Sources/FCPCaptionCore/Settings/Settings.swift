@@ -10,17 +10,32 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
     /// BCP-47 code, or `nil` to let the engine detect it.
     public var language: String?
     public var captions: CaptionSplitOptions
+    public var style: CaptionStyle
 
     public init(
         model: WhisperModel = .default,
         engine: WhisperKitEngine.Options = .init(),
         language: String? = "ko",
-        captions: CaptionSplitOptions = .default
+        captions: CaptionSplitOptions = .default,
+        style: CaptionStyle = .default
     ) {
         self.model = model
         self.engine = engine
         self.language = language
         self.captions = captions
+        self.style = style
+    }
+
+    // Settings stored by an older build have no style; decoding must not fail over it.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            model: try container.decodeIfPresent(WhisperModel.self, forKey: .model) ?? .default,
+            engine: try container.decodeIfPresent(WhisperKitEngine.Options.self, forKey: .engine) ?? .init(),
+            language: try container.decodeIfPresent(String.self, forKey: .language),
+            captions: try container.decodeIfPresent(CaptionSplitOptions.self, forKey: .captions) ?? .default,
+            style: try container.decodeIfPresent(CaptionStyle.self, forKey: .style) ?? .default
+        )
     }
 
     public static let `default` = FCPCaptionSettings()

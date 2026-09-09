@@ -12,9 +12,12 @@ import Foundation
 public struct ITTWriter: Sendable {
     /// Goes on the root as `xml:lang`. This is the whole reason the format is worth writing.
     public var language: String
+    /// Only the size reaches an iTT file; TTML has no place for a font name.
+    public var style: CaptionStyle
 
-    public init(language: String = "ko") {
+    public init(language: String = "ko", style: CaptionStyle = .default) {
         self.language = language
+        self.style = style
     }
 
     /// - Parameters:
@@ -52,13 +55,13 @@ public struct ITTWriter: Sendable {
         ttp:timeBase="smpte">
           <head>
             <styling>
-              <style xml:id="normal" tts:color="white" tts:fontFamily="sansSerif" tts:fontSize="100%" tts:fontStyle="normal" tts:fontWeight="normal"/>
+              <style xml:id="normal" \(style.ittAttributes.map { "\($0.0)=\"\($0.1)\"" }.joined(separator: " "))/>
             </styling>
             <layout>
               <region xml:id="bottom" tts:displayAlign="after" tts:extent="100% 15%" tts:origin="0% 85%" tts:writingMode="lrtb"/>
             </layout>
           </head>
-          <body tts:color="white" region="bottom" style="normal">
+          <body region="bottom" style="normal">
             <div>
         \(paragraphs)
             </div>

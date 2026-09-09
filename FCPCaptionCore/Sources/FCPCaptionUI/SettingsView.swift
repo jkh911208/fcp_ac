@@ -24,6 +24,8 @@ public struct SettingsView: View {
                 Divider()
                 language
                 Divider()
+                section("자막 모양") { CaptionStyleView(style: $settings.style) }
+                Divider()
                 advanced
             }
             .padding(16)

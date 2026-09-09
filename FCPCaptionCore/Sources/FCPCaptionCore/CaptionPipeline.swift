@@ -66,6 +66,7 @@ public struct CaptionPipeline: Sendable {
         public var captions: [Caption] { clips.flatMap(\.captions) }
         /// The sequence's frame duration, needed to write a caption file's SMPTE timecodes.
         public var frameDuration: FCPTime?
+        public var style: CaptionStyle = .default
 
         /// Captions positioned against the **timeline** rather than each clip, which is how a
         /// caption file is read. Final Cut Pro imports one of these straight onto the project that
@@ -83,7 +84,8 @@ public struct CaptionPipeline: Sendable {
         /// An iTT caption file for the whole timeline, or nil when the document had no frame rate.
         public func captionFile(language: String) -> String? {
             guard let frameDuration else { return nil }
-            return ITTWriter(language: language).string(from: timelineCaptions, frameDuration: frameDuration)
+            return ITTWriter(language: language, style: style)
+                .string(from: timelineCaptions, frameDuration: frameDuration)
         }
         public var words: Int { clips.reduce(0) { $0 + $1.words } }
         /// Captions that could not be placed because the editor's own captions already held that
@@ -101,15 +103,18 @@ public struct CaptionPipeline: Sendable {
     public var engine: any TranscriptionEngine
     public var captionOptions: CaptionSplitOptions
     public var language: String?
+    public var style: CaptionStyle
 
     public init(
         engine: any TranscriptionEngine,
         captionOptions: CaptionSplitOptions = .default,
-        language: String? = "ko"
+        language: String? = "ko",
+        style: CaptionStyle = .default
     ) {
         self.engine = engine
         self.captionOptions = captionOptions
         self.language = language
+        self.style = style
     }
 
     /// Transcription dominates the wall clock, so it owns most of the progress bar.
@@ -195,6 +200,7 @@ public struct CaptionPipeline: Sendable {
         progress(Report(stage: .writingDocument, fraction: 1))
         var result = Result(document: document, clips: results)
         result.frameDuration = parsed.frameDuration
+        result.style = style
         return result
     }
 
@@ -234,7 +240,7 @@ public struct CaptionPipeline: Sendable {
         }
 
         progress(Report(stage: .writingDocument, fraction: 0))
-        let written = try FCPXMLWriter(language: language ?? "ko")
+        let written = try FCPXMLWriter(language: language ?? "ko", style: style)
             .write(captions, to: clip, inDocument: document)
         document = written.document
         return ClipResult(clip: clip, captions: captions, words: words.count, skipped: written.skipped)
