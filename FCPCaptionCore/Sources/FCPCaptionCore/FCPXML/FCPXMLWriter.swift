@@ -17,11 +17,50 @@ public struct FCPXMLWriter: Sendable {
     /// lane already in use, which is also how a second language would sit alongside a first.
     public var lane: Int?
     public var style: CaptionStyle
+    /// What to write onto the timeline.
+    public var form: Form
 
-    public init(language: String = "ko", lane: Int? = nil, style: CaptionStyle = .default) {
+    /// Captions and titles are different things, and Final Cut Pro treats them differently.
+    ///
+    /// A **caption** goes on the caption lane: it is a subtitle track, it can be exported as a
+    /// file, toggled by role, and FCP's inspector will not let anyone change its font. A **title**
+    /// is text in the picture: every type control is editable in FCP, and it is not a subtitle
+    /// track at all — no caption index, no export, and it burns into the render.
+    ///
+    /// They coexist on one timeline, so `both` is a real answer.
+    public enum Form: String, Sendable, Equatable, Codable, CaseIterable {
+        case caption, title, both
+
+        public var writesCaptions: Bool { self != .title }
+        public var writesTitles: Bool { self != .caption }
+
+        public var korean: String {
+            switch self {
+            case .caption: "캡션"
+            case .title: "타이틀"
+            case .both: "둘 다"
+            }
+        }
+
+        public var summary: String {
+            switch self {
+            case .caption: "자막 트랙으로 들어갑니다. 자막 파일로 내보낼 수 있지만 Final Cut Pro에서 글꼴을 바꿀 수 없습니다."
+            case .title: "화면에 얹는 글자입니다. Final Cut Pro에서 글꼴을 자유롭게 바꿀 수 있지만 자막 트랙은 아닙니다."
+            case .both: "둘 다 만듭니다. 캡션은 역할로 껐다 켤 수 있어 한 타임라인에 함께 둘 수 있습니다."
+            }
+        }
+    }
+
+    public init(
+        language: String = "ko",
+        lane: Int? = nil,
+        style: CaptionStyle = .default,
+        form: Form = .caption
+    ) {
         self.language = language
         self.lane = lane
         self.style = style
+        self.form = form
     }
 
     public var role: String { "iTT?captionFormat=ITT.\(language)" }
@@ -64,16 +103,35 @@ public struct FCPXMLWriter: Sendable {
         let all = placements(for: captions, clip: clip, frameDuration: frameDuration)
         let free = all.compactMap { avoiding(occupied, $0, frameDuration: frameDuration) }
 
+        let titleLane = form == .both ? lane + 1 : lane
+        var effectID: String?
+        if form.writesTitles { effectID = try titleEffectID(in: root) }
+
         for placement in free {
-            let styleID = "ts\(nextStyleID)"
-            nextStyleID += 1
-            insert(captionElement(placement.caption,
-                                  start: placement.start,
-                                  duration: placement.end - placement.start,
-                                  frameDuration: frameDuration,
-                                  styleID: styleID,
-                                  lane: lane),
-                   into: target)
+            let duration = placement.end - placement.start
+            if form.writesCaptions {
+                let styleID = "ts\(nextStyleID)"
+                nextStyleID += 1
+                insert(captionElement(placement.caption,
+                                      start: placement.start,
+                                      duration: duration,
+                                      frameDuration: frameDuration,
+                                      styleID: styleID,
+                                      lane: lane),
+                       into: target)
+            }
+            if form.writesTitles, let effectID {
+                let styleID = "ts\(nextStyleID)"
+                nextStyleID += 1
+                insert(titleElement(placement.caption,
+                                    start: placement.start,
+                                    duration: duration,
+                                    frameDuration: frameDuration,
+                                    styleID: styleID,
+                                    lane: titleLane,
+                                    effectID: effectID),
+                       into: target)
+            }
         }
 
         // Final Cut Pro's own exports carry no standalone declaration, and pretty-printed
@@ -256,6 +314,80 @@ public struct FCPXMLWriter: Sendable {
             return
         }
         clip.insertChild(caption, at: clip.children?.firstIndex(of: children[boundary]) ?? boundary)
+    }
+
+    /// Final Cut Pro's built-in Subtitle title, taken from a real export.
+    ///
+    /// The leading `...` is **literal** — it is how FCP refers to its own template root, not an
+    /// elision in the fixture. A path built from where the template sits on disk does not work.
+    static let subtitleEffectUID =
+        ".../Titles.localized/Subtitles.localized/Subtitle.localized/Subtitle.moti"
+    static let subtitleEffectName = "Subtitle"
+
+    /// The id of the Subtitle effect resource, adding it to `resources` if the document has none.
+    private func titleEffectID(in root: XMLElement) throws -> String {
+        let effects = try root.nodes(forXPath: "resources/effect").compactMap { $0 as? XMLElement }
+        if let existing = effects.first(where: {
+            $0.attribute(forName: "uid")?.stringValue == Self.subtitleEffectUID
+        }), let id = existing.attribute(forName: "id")?.stringValue {
+            return id
+        }
+
+        guard let resources = try root.nodes(forXPath: "resources").compactMap({ $0 as? XMLElement }).first
+        else { throw FCPXMLError.missingAttribute(element: "fcpxml", attribute: "resources") }
+
+        // Resource ids are document-wide; continue past whatever is already there.
+        let used = try root.nodes(forXPath: "resources/*")
+            .compactMap { ($0 as? XMLElement)?.attribute(forName: "id")?.stringValue }
+            .compactMap { Int($0.dropFirst()) }
+        let id = "r\((used.max() ?? 0) + 1)"
+
+        let effect = XMLElement(name: "effect")
+        effect.setOrderedAttributes([
+            ("id", id),
+            ("name", Self.subtitleEffectName),
+            ("uid", Self.subtitleEffectUID),
+        ])
+        resources.addChild(effect)
+        return id
+    }
+
+    private func titleElement(
+        _ caption: Caption,
+        start: FCPTime,
+        duration: FCPTime,
+        frameDuration: FCPTime,
+        styleID: String,
+        lane: Int,
+        effectID: String
+    ) -> XMLElement {
+        let element = XMLElement(name: "title")
+        element.setOrderedAttributes([
+            ("ref", effectID),
+            ("lane", String(lane)),
+            ("offset", start.description),
+            ("name", caption.lines.first ?? caption.text),
+            // FCP writes a title's internal start as exactly one hour of timecode — 216000 frames
+            // in the reference export, where a caption's was 215784. Two conventions for the same
+            // idea, and each format wants its own.
+            ("start", FCPTime(216_000 * frameDuration.numerator, frameDuration.denominator).description),
+            ("duration", duration.description),
+        ])
+
+        let text = XMLElement(name: "text")
+        let run = XMLElement(name: "text-style", stringValue: caption.text)
+        run.setOrderedAttributes([("ref", styleID)])
+        text.addChild(run)
+        element.addChild(text)
+
+        let definition = XMLElement(name: "text-style-def")
+        definition.setOrderedAttributes([("id", styleID)])
+        let styleElement = XMLElement(name: "text-style")
+        styleElement.setOrderedAttributes(style.titleAttributes)
+        definition.addChild(styleElement)
+        element.addChild(definition)
+
+        return element
     }
 
     // MARK: - Locating

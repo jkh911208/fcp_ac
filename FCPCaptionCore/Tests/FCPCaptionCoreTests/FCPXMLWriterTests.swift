@@ -505,3 +505,100 @@ struct FCPXMLContainerWriterTests {
         #expect(try Fixture.DTD.validate(wrapped) == nil)
     }
 }
+
+/// Captions, titles, or both.
+///
+/// Final Cut Pro's caption inspector has no font control; its Subtitle title has every one. The
+/// two are different objects — a caption is a subtitle track, a title is text in the picture — and
+/// they sit on one timeline together, so all three answers are real.
+struct FCPXMLWriterFormTests {
+    let reader = FCPXMLReader()
+
+    private func write(_ form: FCPXMLWriter.Form) throws -> (document: Data, xml: XMLDocument) {
+        let data = try Fixture.withoutCaptions("caption_one_clip.fcpxml")
+        let clip = try #require(try reader.read(data: data).clips.first)
+        let written = try FCPXMLWriter(form: form).addingCaptions([
+            Caption(lines: ["첫 줄", "둘째 줄"], start: 1, end: 3),
+            Caption(lines: ["다음"], start: 4, end: 6),
+        ], to: clip, inDocument: data)
+        return (written, try XMLDocument(data: written))
+    }
+
+    private func count(_ xml: XMLDocument, _ name: String) throws -> Int {
+        try xml.nodes(forXPath: "//\(name)").count
+    }
+
+    @Test func captionsOnly() throws {
+        let (_, xml) = try write(.caption)
+        #expect(try count(xml, "caption") == 2)
+        #expect(try count(xml, "title") == 0)
+        // No effect resource is added for a document that will not use one.
+        #expect(try count(xml, "effect") == 0)
+    }
+
+    @Test func titlesOnly() throws {
+        let (_, xml) = try write(.title)
+        #expect(try count(xml, "title") == 2)
+        #expect(try count(xml, "caption") == 0)
+    }
+
+    @Test func bothLandOnDifferentLanes() throws {
+        let (_, xml) = try write(.both)
+        #expect(try count(xml, "caption") == 2)
+        #expect(try count(xml, "title") == 2)
+
+        let captionLanes = try xml.nodes(forXPath: "//caption")
+            .compactMap { ($0 as? XMLElement)?.attribute(forName: "lane")?.stringValue }
+        let titleLanes = try xml.nodes(forXPath: "//title")
+            .compactMap { ($0 as? XMLElement)?.attribute(forName: "lane")?.stringValue }
+        // Sharing a lane would stack them on top of each other.
+        #expect(Set(captionLanes).isDisjoint(with: Set(titleLanes)))
+    }
+
+    @Test func theTitleReferencesFinalCutProsOwnSubtitleTemplate() throws {
+        let (_, xml) = try write(.title)
+        let effect = try #require(try xml.nodes(forXPath: "//effect").compactMap { $0 as? XMLElement }.first)
+        // The leading "..." is literal — this is exactly what Final Cut Pro exported.
+        #expect(effect.attribute(forName: "uid")?.stringValue
+            == ".../Titles.localized/Subtitles.localized/Subtitle.localized/Subtitle.moti")
+        #expect(effect.attribute(forName: "name")?.stringValue == "Subtitle")
+
+        let title = try #require(try xml.nodes(forXPath: "//title").compactMap { $0 as? XMLElement }.first)
+        #expect(title.attribute(forName: "ref")?.stringValue == effect.attribute(forName: "id")?.stringValue)
+    }
+
+    @Test func oneEffectResourceIsSharedByEveryTitle() throws {
+        let (_, xml) = try write(.title)
+        #expect(try count(xml, "effect") == 1)
+    }
+
+    @Test func aResourceIdIsNotReused() throws {
+        let (_, xml) = try write(.title)
+        let ids = try xml.nodes(forXPath: "/fcpxml/resources/*")
+            .compactMap { ($0 as? XMLElement)?.attribute(forName: "id")?.stringValue }
+        #expect(Set(ids).count == ids.count)
+    }
+
+    /// Titles are on their own type scale: FCP's Subtitle writes 100 where a caption writes 13.
+    @Test func aTitleUsesTheTitleTypeScale() throws {
+        let (_, xml) = try write(.title)
+        let style = try #require(try xml.nodes(forXPath: "//title/text-style-def/text-style")
+            .compactMap { $0 as? XMLElement }.first)
+        #expect(style.attribute(forName: "fontSize")?.stringValue == "100")
+        #expect(style.attribute(forName: "font")?.stringValue == "Helvetica Neue")
+    }
+
+    @Test func styleScalesAcrossBothForms() {
+        let style = CaptionStyle(fontSize: 26)
+        #expect(style.fontSize == 26)          // caption points
+        #expect(style.titleFontSize == 200)    // the same size on the title scale
+    }
+
+    @Test(.enabled(if: Fixture.DTD.isAvailable))
+    func everyFormValidatesAgainstApplesDTD() throws {
+        for form in FCPXMLWriter.Form.allCases {
+            let (document, _) = try write(form)
+            #expect(try Fixture.DTD.validate(document) == nil, "\(form) did not validate")
+        }
+    }
+}

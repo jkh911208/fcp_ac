@@ -131,6 +131,24 @@ public struct CaptionStyle: Sendable, Equatable, Codable {
         max(25, Int((Double(fontSize) / 13.0 * 100).rounded()))
     }
 
+    /// Titles are on a different type scale entirely: Final Cut Pro's Subtitle template writes
+    /// `fontSize="100"` where a caption is `13`. Carrying a caption's size straight across would
+    /// produce text too small to read, so it is scaled.
+    public var titleFontSize: Int { max(10, Int((Double(fontSize) / 13.0 * 100).rounded())) }
+
+    /// The same attributes as a caption, at the title type scale, with the defaults Final Cut
+    /// Pro's own Subtitle title uses.
+    public var titleAttributes: [(String, String)] {
+        var attributes = fcpxmlAttributes
+        if let index = attributes.firstIndex(where: { $0.0 == "fontSize" }) {
+            attributes[index] = ("fontSize", String(titleFontSize))
+        }
+        if let index = attributes.firstIndex(where: { $0.0 == "font" }) {
+            attributes[index] = ("font", fontName ?? "Helvetica Neue")
+        }
+        return attributes
+    }
+
     /// The attributes an iTT caption file cannot carry, named so Settings can say so.
     public static let notInCaptionFiles = "글꼴 이름 · 자간 · 줄 간격 · 기준선 · 그림자"
 

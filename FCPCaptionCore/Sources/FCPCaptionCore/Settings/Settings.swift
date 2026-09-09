@@ -11,19 +11,22 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
     public var language: String?
     public var captions: CaptionSplitOptions
     public var style: CaptionStyle
+    public var form: FCPXMLWriter.Form
 
     public init(
         model: WhisperModel = .default,
         engine: WhisperKitEngine.Options = .init(),
         language: String? = "ko",
         captions: CaptionSplitOptions = .default,
-        style: CaptionStyle = .default
+        style: CaptionStyle = .default,
+        form: FCPXMLWriter.Form = .caption
     ) {
         self.model = model
         self.engine = engine
         self.language = language
         self.captions = captions
         self.style = style
+        self.form = form
     }
 
     // Settings stored by an older build have no style; decoding must not fail over it.
@@ -34,7 +37,8 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
             engine: try container.decodeIfPresent(WhisperKitEngine.Options.self, forKey: .engine) ?? .init(),
             language: try container.decodeIfPresent(String.self, forKey: .language),
             captions: try container.decodeIfPresent(CaptionSplitOptions.self, forKey: .captions) ?? .default,
-            style: try container.decodeIfPresent(CaptionStyle.self, forKey: .style) ?? .default
+            style: try container.decodeIfPresent(CaptionStyle.self, forKey: .style) ?? .default,
+            form: try container.decodeIfPresent(FCPXMLWriter.Form.self, forKey: .form) ?? .caption
         )
     }
 

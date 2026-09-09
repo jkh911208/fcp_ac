@@ -107,19 +107,22 @@ public struct CaptionPipeline: Sendable {
     /// Where the dropped project lives, when Final Cut Pro told us. Used to put the project back
     /// inside its own event so an import updates it instead of duplicating it.
     public var container: FCPXMLContainer
+    public var form: FCPXMLWriter.Form
 
     public init(
         engine: any TranscriptionEngine,
         captionOptions: CaptionSplitOptions = .default,
         language: String? = "ko",
         style: CaptionStyle = .default,
-        container: FCPXMLContainer = .init()
+        container: FCPXMLContainer = .init(),
+        form: FCPXMLWriter.Form = .caption
     ) {
         self.engine = engine
         self.captionOptions = captionOptions
         self.language = language
         self.style = style
         self.container = container
+        self.form = form
     }
 
     /// Transcription dominates the wall clock, so it owns most of the progress bar.
@@ -246,7 +249,7 @@ public struct CaptionPipeline: Sendable {
         }
 
         progress(Report(stage: .writingDocument, fraction: 0))
-        let written = try FCPXMLWriter(language: language ?? "ko", style: style)
+        let written = try FCPXMLWriter(language: language ?? "ko", style: style, form: form)
             .write(captions, to: clip, inDocument: document)
         document = written.document
         return ClipResult(clip: clip, captions: captions, words: words.count, skipped: written.skipped)

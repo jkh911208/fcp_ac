@@ -24,6 +24,15 @@ public struct SettingsView: View {
                 Divider()
                 language
                 Divider()
+                section("자막 형식") {
+                    Picker("", selection: $settings.form) {
+                        ForEach(FCPXMLWriter.Form.allCases, id: \.self) { Text($0.korean).tag($0) }
+                    }
+                    .pickerStyle(.radioGroup)
+                    .labelsHidden()
+                    note(settings.form.summary)
+                }
+                Divider()
                 section("자막 모양") { CaptionStyleView(style: $settings.style) }
                 Divider()
                 advanced
