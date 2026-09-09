@@ -6,7 +6,9 @@ and no session has to guess what state the project is in.
 Per spec §14 and `CLAUDE.md`, GUI-only work belongs to the user. Everything below is a click path
 for a person; the agent writes the Swift, runs `xcodebuild`, and fixes the compile errors.
 
-**Status: SDK installed (2026-09-09). Xcode project not created yet.**
+**Status: done (2026-09-09).** The SDK is installed, the project exists, the extension builds and
+Final Cut Pro can see it. Sections 1–4 below describe what `Tools/generate_project.rb` does, not
+things to click.
 
 ---
 
@@ -22,7 +24,45 @@ this Mac, verified:
 | Static library | `usr/lib/libProExtension.a` + `usr/include/ProExtension/ProExtension.h` |
 | Host headers | `Library/Frameworks/ProExtensionHost.framework` — **headers only, no binary** |
 
-## 1. The host app project
+## 1. The project is generated, not clicked
+
+Xcode's "FCP Workflow Extension" template can only be instantiated from the IDE, so the project is
+built by **`ruby Tools/generate_project.rb`** instead, from the settings that template actually
+sets. Two things this buys over clicking once:
+
+- a clone reproduces the project exactly, and
+- every setting that matters is readable in one 150-line script instead of a 2000-line `pbxproj`.
+
+The `.xcodeproj` is committed, so opening it in Xcode works without running Ruby. **Settings changed
+by hand in Xcode are lost the next time the script runs** — put them in the script instead. The one
+thing that legitimately belongs to this Mac, a signing team, is not in there at all: the project
+signs ad-hoc (`CODE_SIGN_IDENTITY = -`), which builds and runs locally without a Developer Program
+membership. M5 adds real signing.
+
+### What it produces
+
+| | |
+|---|---|
+| `FCPCaption` | the container app. macOS only ships an appex inside an app; this one just says where to find the panel. |
+| `FCPCaptionExtension` | the appex — `com.apple.FinalCut.WorkflowExtension`, principal class `FCPCaptionExtensionViewController`. |
+| Packages | `FCPCaptionCore` and `FCPCaptionUI`, linked into both targets from the local package. |
+
+### Verified on the built binary, not assumed
+
+- `_ProExtensionMain` and `_ProExtensionHostSingleton` are statically linked in from
+  `libProExtension.a`, and `otool -L` shows **no** ProExtensionHost framework — exactly what the
+  release notes require.
+- Code signature flags are `adhoc,runtime` with **no** `library-validation`. Getting this wrong is
+  silent: the extension builds and then never appears in Final Cut Pro.
+- The appex carries `app-sandbox`, `automation.apple-events`, `cs.disable-library-validation` and
+  the three `scripting-targets`.
+- `pluginkit -mAvv | grep -i fcpcaption` lists it once, from `/Applications`.
+
+### The old click path
+
+Kept only as a reference for what the generator is imitating.
+
+## 1b. The host app project (reference)
 
 1. **File ▸ New ▸ Project… ▸ macOS ▸ App**
    - Product Name: `FCPCaption`

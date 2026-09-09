@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.app-sandbox</key>
+	<true/>
+	<key>com.apple.security.network.client</key>
+	<true/>
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
+	<!-- "Disable Library Validation" from the release notes: the SDK is not fully compatible with
+	     Hardened Runtime, and with library validation on the extension simply does not load. -->
+	<key>com.apple.security.cs.disable-library-validation</key>
+	<true/>
+	<!-- From the SDK release notes. ProExtensionHost uses Apple Events as its transport, so a
+	     sandboxed extension needs permission to target Final Cut Pro and its variants.
+	     com.apple.FinalCutApp is the variant the January 2026 notes added. -->
+	<key>com.apple.security.scripting-targets</key>
+	<dict>
+		<key>com.apple.FinalCut</key>
+		<array>
+			<string>com.apple.FinalCut.library.inspection</string>
+		</array>
+		<key>com.apple.FinalCutApp</key>
+		<array>
+			<string>com.apple.FinalCut.library.inspection</string>
+		</array>
+		<key>com.apple.FinalCutTrial</key>
+		<array>
+			<string>com.apple.FinalCut.library.inspection</string>
+		</array>
+	</dict>
+</dict>
+</plist>
