@@ -155,6 +155,26 @@ do {
         }
         try result.document.write(to: output)
 
+        // The caption-file route is the one that reaches the project already open in Final Cut
+        // Pro, with no dialog — so write it too, as .itt rather than .srt because only iTT can say
+        // the captions are Korean.
+        if let frameDuration = try FCPXMLReader().read(data: try Data(contentsOf: source)).frameDuration {
+            let captionFile = output.deletingPathExtension().deletingPathExtension()
+                .appendingPathExtension("itt")
+            let itt = ITTWriter(language: arguments.language ?? "ko").string(
+                from: result.captions.map { caption in
+                    // Caption times are relative to the clip; the caption file is read against the
+                    // timeline, so the clip's position on it has to be added back.
+                    Caption(lines: caption.lines,
+                            start: caption.start + result.clip.offset.seconds,
+                            end: caption.end + result.clip.offset.seconds)
+                },
+                frameDuration: frameDuration
+            )
+            try itt.write(to: captionFile, atomically: true, encoding: .utf8)
+            log("자막 파일: \(captionFile.lastPathComponent) (File ▸ Import ▸ Captions… 로 열면 지금 프로젝트에 바로 들어갑니다)")
+        }
+
         log("클립: \(result.clip.name) (\(String(format: "%.1f", result.clip.durationSeconds))초)")
         log("""
         완료: 단어 \(result.words)개 → 자막 \(result.captions.count)개, \

@@ -162,10 +162,12 @@ click path, is in `docs/XCODE_SETUP.md`.
 - **Caption quality is spot-checked, not measured.** One 24.5s real clip and one synthesized
   sample. The ±0.3s timing bar in the spec's definition of done has not been measured against
   anything. Needs the 1/15/60-minute clips.
-- **The caption language of an imported `.srt` is unverified.** The SRT path put captions on the
-  timeline with no complaint, but nothing yet confirms they arrive with the Korean caption role
-  rather than a default. Writing `.itt` instead would let us state the language — and that needs a
-  real `.itt` exported from FCP first, the same way the FCPXML schema did.
+- ~~The caption language of an imported `.srt` is unverified.~~ **It arrives as English.** Final
+  Cut Pro's own caption inspector says `Format SRT | Language English`, because SubRip has nowhere
+  to record a language. Fixed by writing **iTT** instead: `Fixtures/caption_korean.itt` is a real
+  FCP export, and `ITTWriter` reproduces it — `xml:lang` on the root, SMPTE timecodes counted in
+  nominal frames, the 1000/1001 pulldown multiplier. The CLI now writes an `.itt` next to the
+  FCPXML, which is the file that reaches the already-open project with no dialog.
 - **M2 is the project's real risk** and is untouched: can a Workflow Extension attach captions to
   clips in an *already-open* project via FCPXML import? Fallback ladder in spec §10.
 

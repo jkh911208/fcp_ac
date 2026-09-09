@@ -29,3 +29,20 @@ machine rather than the schema. Everything else is byte-for-byte what FCP wrote:
 | Frame alignment | every caption time is an exact multiple of the *sequence* format's `frameDuration` (`1001/60000s` here), even though the asset's own format is `10/600s` |
 | Caption `start` | ≈1 hour (`215999784/60000s` = exactly 215784 frames) — FCP's internal base for synthesized elements, not a timeline position |
 | Text | `<text placement="bottom">` wrapping `<text-style ref="…">`, with a sibling `<text-style-def>`; a line break is its own `text-style` run |
+
+## `caption_korean.itt`
+
+Exported from the same Final Cut Pro project with **File ▸ Export Captions…**, ticking the
+**iTT / Korean** role — the role our FCPXML import created, which is itself the confirmation that
+`iTT?captionFormat=ITT.ko` was right. Nothing was edited; it is exactly what FCP wrote.
+
+### What it settled
+
+| Question | Answer from this file |
+|---|---|
+| How a caption file carries its language | `xml:lang="ko"` on the root `<tt>`. An `.srt` has nowhere to put this, which is why captions imported from SRT arrive as **English** |
+| Time format | **SMPTE timecode**, `HH:MM:SS:FF` — frames, not seconds (`end="00:00:03:00"`), with `ttp:timeBase="smpte"` |
+| Frame rate | `ttp:frameRate="60"` with `ttp:frameRateMultiplier="1000 1001"` — the nominal rate and the 1000/1001 pulldown, i.e. 59.94 |
+| Drop frame | `ttp:dropMode="nonDrop"`, matching the sequence's `tcFormat="NDF"` |
+| Line breaks | `<br/>`. FCP writes one after the last line too |
+| Styling | a single `<style xml:id="normal">` and one `<region xml:id="bottom">` at `origin="0% 85%"`, `extent="100% 15%"` |
