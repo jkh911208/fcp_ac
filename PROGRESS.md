@@ -89,34 +89,44 @@ for real, both now tests:
 - frame quantization (start rounds down, end rounds up) made two adjacent captions overlap by a
   frame even though they didn't overlap in seconds — invalid on one caption lane.
 
-### M2 — settled by trying every route in real Final Cut Pro (2026-09-09)
+### M2 and M3 — both routes work end to end (2026-09-09)
 
-**The caption file wins.** Save an `.itt`, then **File ▸ Import ▸ Captions…**: the captions land on
-the project already open, in Korean, with nothing duplicated. The panel offers that first.
+Every step below was run in real Final Cut Pro, on a real project.
 
-| Route | What happened |
-|---|---|
-| **iTT file + File ▸ Import ▸ Captions…** | ✅ Lands on the open timeline. `Format iTT \| Language Korean`. No dialog, no duplication |
-| SRT file, same import | Works, but arrives tagged **English** — SubRip has nowhere to record a language |
-| FCPXML + File ▸ Import ▸ XML… | Imports, but brings a **copy of the event and project** into the library ("9-9-26 1"). Import means bringing items in; no dialog choice avoids that |
-| FCPXML by Apple Event `open` | Works — after a `temporary-exception.apple-events` entitlement. The read-only `library.inspection` scripting group is not enough and fails with "A privilege violation occurred" |
-| Caption file by Apple Event `open` | ❌ Final Cut Pro refuses it. It declares no caption UTIs |
-| Caption file dragged from Finder | ❌ |
-| FCPXML dragged from the panel | Not built. Apple documents it and a shipping plugin uses it, but the caption-file route was good enough — **the user's call, and the reason there is no drag code here** |
+**Caption file — the everyday route.** Save an `.itt`, then **File ▸ Import ▸ Captions…**: the
+captions land on the project already open, tagged Korean, no dialog and nothing duplicated. SRT
+does the same but arrives tagged **English**, because SubRip has nowhere to record a language.
 
-Programmatic write-back does not exist at any point: the SDK's host API is read-only and Final Cut
-Pro's scripting dictionary has one `get` command.
+**FCPXML — the route that carries styling.** Drag the project onto the panel, transcribe, **Final
+Cut Pro로 보내기**, choose the library, **Replace** — and the project the editor was working in is
+updated in place. Captions, titles, or both, with every text attribute Final Cut Pro renders.
 
-**Three bugs this found, each invisible until a real project hit it:**
-- Captions were appended to the end of a clip. Apple's DTD orders a clip's children and `caption`
-  is an anchored item that must precede markers, `audio-channel-source`, filters and metadata. The
-  reference export had none of those; a clip with a Dialogue-1/Dialogue-2 configuration does, and
-  FCP rejected the entire import.
-- Every caption carried a trailing `<br/>`, copied from the reference export — where it existed
-  because that caption's editor had typed a newline. It added an empty third line, past FCP's
-  two-line limit, and drew every caption **red**.
-- The save panel was handed a name that already had its extension, so it offered
-  `IMG_2194.itt.itt`.
+Two dialogs on that path cannot be removed, and both are Apple's design:
+- the **Open Library** dialog is documented as always appearing for an Apple Event import;
+- **Replace** is the choice FCP offers when the incoming items match existing ones — which is
+  exactly what we want it to notice.
+
+What made the difference between "a copy appears" and "your project is updated" was wrapping the
+project back into its own event and library, read from `FCPXHost`. That, in turn, needed the
+**automation permission**: without it every host property returns nil, with no error and nothing in
+any log. Two fixes were attempted against that silence before a file-based trace named the cause in
+one line. `os_log` from this extension does not reach `log show` at all.
+
+**Programmatic write-back does not exist** at any point: the host API is read-only and Final Cut
+Pro's scripting dictionary has one `get` command. A caption file cannot be delivered by `open`
+either — FCP refuses it, declaring no caption UTIs.
+
+**Bugs this found, none of which a test would have caught first:**
+- captions appended after `audio-channel-source` broke the DTD's child order, and FCP rejected the
+  whole import;
+- a trailing `<br/>`, copied from the reference export, added an empty third line and turned every
+  caption red;
+- a clip's `start` is a **timecode**, so a DJI file shot at 17:12 asked AVFoundation for the
+  61,920-second mark of an 1,101-second recording;
+- titles are measured on **two different grids at once** — position on the clip's rate, length on
+  the sequence's — which took two rounds to see because the fixture was only read halfway;
+- reopening the panel does not restart the extension, so anything asked once in `viewDidLoad` was
+  never asked again.
 
 ### Transcription is not repeatable, and that is the right trade (2026-09-09)
 

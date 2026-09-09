@@ -44,13 +44,13 @@ enum HostContext {
         let text = ([stamp] + lines).joined(separator: "\n") + "\n\n"
         try? FileManager.default.createDirectory(
             at: traceURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        if let handle = try? FileHandle(forWritingTo: traceURL) {
-            handle.seekToEndOfFile()
-            handle.write(Data(text.utf8))
-            try? handle.close()
-        } else {
-            try? Data(text.utf8).write(to: traceURL)
-        }
+        // Bounded: this is written every time the panel appears, and a diagnostic that fills a
+        // disk is not a diagnostic.
+        let existing = (try? String(contentsOf: traceURL, encoding: .utf8)) ?? ""
+        let combined = existing.count > 32_768
+            ? String(existing.suffix(16_384)) + text
+            : existing + text
+        try? Data(combined.utf8).write(to: traceURL, options: .atomic)
     }
 
     /// The last answer worth keeping.
