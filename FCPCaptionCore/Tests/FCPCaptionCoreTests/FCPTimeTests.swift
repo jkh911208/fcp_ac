@@ -14,6 +14,8 @@ struct FCPTimeTests {
         #expect(try FCPTime.parse("14710/600s") == FCPTime(14710, 600))
         #expect(try FCPTime.parse(" 5s ") == FCPTime(5))
         #expect(try FCPTime.parse("5") == FCPTime(5))   // no trailing s, seen on some attributes
+        // FCP never writes a decimal, but other FCPXML producers do; reading one is free.
+        #expect(try FCPTime.parse("2.5s") == FCPTime(5, 2))
     }
 
     @Test func rejectsGarbage() {

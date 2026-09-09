@@ -9,13 +9,18 @@ import Foundation
 public struct FCPXMLWriter: Sendable {
     /// Language subtag used in the caption role, e.g. `ko` → `iTT?captionFormat=ITT.ko`.
     public var language: String
-    /// Captions go on their own lane above the clip; FCP's own export uses lane 1.
-    public var lane: Int
+    /// The lane to write on, or `nil` to pick one that is free.
+    ///
+    /// Captions on one lane may not overlap, and a clip can already carry the editor's own —
+    /// appending ours to lane 1 on top of theirs produces a document Final Cut Pro can reject.
+    /// Automatic means: lane 1 when the clip has no captions, otherwise one above the highest
+    /// lane already in use, which is also how a second language would sit alongside a first.
+    public var lane: Int?
     /// The font FCP chose for a Korean caption in the reference export.
     public var font: String
     public var fontSize: Int
 
-    public init(language: String = "ko", lane: Int = 1, font: String = ".Apple SD Gothic NeoI", fontSize: Int = 13) {
+    public init(language: String = "ko", lane: Int? = nil, font: String = ".Apple SD Gothic NeoI", fontSize: Int = 13) {
         self.language = language
         self.lane = lane
         self.font = font
@@ -43,33 +48,19 @@ public struct FCPXMLWriter: Sendable {
 
         let frameDuration = try frameDuration(in: root, clip: clip)
         let target = try element(for: clip, in: root)
+        let lane = try self.lane ?? freeLane(in: target)
 
         var nextStyleID = try nextStyleIdentifier(in: root)
-        let clipEnd = clip.start + clip.duration
 
-        for caption in captions {
-            // Start rounds down and end rounds up (see FCPTime.FrameRounding): quantization may
-            // show a caption a frame early or hold it a frame long, never cut a word off.
-            var start = (clip.start + FCPTime(seconds: caption.start))
-                .aligned(to: frameDuration, rounding: .down)
-            var end = (clip.start + FCPTime(seconds: caption.end))
-                .aligned(to: frameDuration, rounding: .up)
-
-            // A caption that falls entirely outside the clip is dropped; one that straddles an edge
-            // is trimmed to it. FCP rejects a caption that runs past its parent.
-            if end <= clip.start || start >= clipEnd { continue }
-            if start < clip.start { start = clip.start }
-            if end > clipEnd { end = clipEnd }
-
-            let oneFrame = FCPTime(frameDuration.numerator, frameDuration.denominator)
-            var duration = end - start
-            if duration < oneFrame { duration = oneFrame }
-            if start + duration > clipEnd { continue }
-
+        for placement in placements(for: captions, clip: clip, frameDuration: frameDuration) {
             let styleID = "ts\(nextStyleID)"
             nextStyleID += 1
-            target.addChild(captionElement(caption, start: start, duration: duration,
-                                           frameDuration: frameDuration, styleID: styleID))
+            target.addChild(captionElement(placement.caption,
+                                           start: placement.start,
+                                           duration: placement.end - placement.start,
+                                           frameDuration: frameDuration,
+                                           styleID: styleID,
+                                           lane: lane))
         }
 
         // Final Cut Pro's own exports carry no standalone declaration, and pretty-printed
@@ -79,6 +70,61 @@ public struct FCPXMLWriter: Sendable {
         return xml.xmlData(options: [.nodePrettyPrint])
     }
 
+    // MARK: - Placement
+
+    private struct Placement {
+        var caption: Caption
+        var start: FCPTime
+        var end: FCPTime
+    }
+
+    /// Turns caption seconds into frame-aligned positions inside the clip.
+    ///
+    /// Three things happen here, in order, and the order matters:
+    /// 1. each edge is snapped to a frame — start down, end up, so a word is never clipped;
+    /// 2. captions outside the clip are dropped and ones straddling its end are trimmed;
+    /// 3. **overlaps introduced by step 1 are removed.** Rounding a caption's end up and the next
+    ///    caption's start down can make two adjacent captions collide by a frame even though they
+    ///    did not overlap in seconds — and two captions on one lane may not overlap. The earlier
+    ///    caption gives way, matching what `CaptionBuilder` already does in the time domain.
+    private func placements(
+        for captions: [Caption],
+        clip: ClipRef,
+        frameDuration: FCPTime
+    ) -> [Placement] {
+        let oneFrame = frameDuration
+        let clipEnd = clip.start + clip.duration
+
+        var placements: [Placement] = []
+        for caption in captions.sorted(by: { $0.start < $1.start }) {
+            var start = (clip.start + FCPTime(seconds: caption.start))
+                .aligned(to: frameDuration, rounding: .down)
+            var end = (clip.start + FCPTime(seconds: caption.end))
+                .aligned(to: frameDuration, rounding: .up)
+
+            if end <= clip.start || start >= clipEnd { continue }
+            if start < clip.start { start = clip.start }
+            if end > clipEnd { end = clipEnd }
+            if end - start < oneFrame { end = start + oneFrame }
+            if end > clipEnd { continue }
+
+            if var previous = placements.last, previous.end > start {
+                previous.end = start
+                if previous.end - previous.start < oneFrame {
+                    // The earlier caption cannot shrink below a frame, so this one starts later.
+                    previous.end = previous.start + oneFrame
+                    start = previous.end
+                    if start >= end { end = start + oneFrame }
+                    if end > clipEnd { continue }
+                }
+                placements[placements.count - 1] = previous
+            }
+
+            placements.append(Placement(caption: caption, start: start, end: end))
+        }
+        return placements
+    }
+
     // MARK: - Building
 
     private func captionElement(
@@ -86,7 +132,8 @@ public struct FCPXMLWriter: Sendable {
         start: FCPTime,
         duration: FCPTime,
         frameDuration: FCPTime,
-        styleID: String
+        styleID: String,
+        lane: Int
     ) -> XMLElement {
         let element = XMLElement(name: "caption")
         // Attribute order follows the reference export, so a diff against a real FCP file shows
@@ -153,6 +200,15 @@ public struct FCPXMLWriter: Sendable {
             throw FCPXMLError.missingAttribute(element: "format", attribute: "frameDuration")
         }
         return assetFrameDuration
+    }
+
+    /// The lowest lane that carries no captions yet, never below 1.
+    private func freeLane(in clip: XMLElement) throws -> Int {
+        let used = try clip.nodes(forXPath: "caption")
+            .compactMap { ($0 as? XMLElement)?.attribute(forName: "lane")?.stringValue }
+            .compactMap(Int.init)
+        guard let highest = used.max() else { return 1 }
+        return max(1, highest + 1)
     }
 
     /// `text-style-def` ids are document-scoped, so new ones continue past whatever FCP already

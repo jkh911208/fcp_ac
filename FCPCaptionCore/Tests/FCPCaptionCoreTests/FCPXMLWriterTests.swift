@@ -34,7 +34,6 @@ struct FCPXMLWriterTests {
         let second = try #require(clip.captions.last)
         #expect(second.text == "오늘은 날씨가\n정말 좋네요")
         #expect(second.role == "iTT?captionFormat=ITT.ko")
-        #expect(second.lane == 1)
         #expect(abs(second.offset.seconds - 2.5) < 0.02)
         #expect(abs((second.offset + second.duration).seconds - 5) < 0.02)
     }
@@ -174,5 +173,86 @@ struct FCPXMLWriterTests {
         #expect(try Fixture.DTD.validate(written) == nil)
         // …and the fixture itself validates, which is what makes a failure above ours, not Apple's.
         #expect(try Fixture.DTD.validate(data) == nil)
+    }
+}
+
+
+/// Lane selection. Captions on one lane may not overlap, and the document we are handed can
+/// already carry the editor's own — this is the rule that keeps ours from landing on top.
+struct FCPXMLWriterLaneTests {
+    let reader = FCPXMLReader()
+
+    private func fixture() throws -> (data: Data, clip: ClipRef) {
+        let data = try Fixture.data("caption_one_clip.fcpxml")
+        return (data, try #require(try reader.read(data: data).clips.first))
+    }
+
+    @Test func capionsAvoidALaneThatIsAlreadyInUse() throws {
+        // The fixture's own caption sits on lane 1 from 0s, exactly where ours would go.
+        let (data, clip) = try fixture()
+        let written = try FCPXMLWriter().addingCaptions(
+            [Caption(lines: ["겹침"], start: 0, end: 2)], to: clip, inDocument: data)
+        let captions = try #require(try reader.read(data: written).clips.first?.captions)
+        #expect(captions.count == 2)
+        #expect(captions.last?.lane == 2)
+    }
+
+    @Test func aClipWithNoCaptionsGetsLaneOne() throws {
+        let xml = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <fcpxml version="1.14">
+          <resources>
+            <format id="r1" frameDuration="1001/30000s"/>
+            <asset id="r2" name="Interview" start="0s" duration="600s" format="r1" hasAudio="1"/>
+          </resources>
+          <library><event name="E"><project name="P">
+            <sequence format="r1" duration="60s" tcStart="0s"><spine>
+              <asset-clip ref="r2" offset="0s" name="Interview" start="0s" duration="60s"/>
+            </spine></sequence>
+          </project></event></library>
+        </fcpxml>
+        """
+        let data = Data(xml.utf8)
+        let clip = try #require(try reader.read(data: data).clips.first)
+        let written = try FCPXMLWriter().addingCaptions(
+            [Caption(lines: ["처음"], start: 0, end: 2)], to: clip, inDocument: data)
+        #expect(try reader.read(data: written).clips.first?.captions.first?.lane == 1)
+    }
+
+    @Test func everyCaptionInOneRunSharesOneLane() throws {
+        let (data, clip) = try fixture()
+        let written = try FCPXMLWriter().addingCaptions([
+            Caption(lines: ["하나"], start: 0, end: 2),
+            Caption(lines: ["둘"], start: 3, end: 5),
+            Caption(lines: ["셋"], start: 6, end: 8),
+        ], to: clip, inDocument: data)
+        let ours = try #require(try reader.read(data: written).clips.first?.captions.dropFirst())
+        #expect(Set(ours.map(\.lane)) == [2])
+    }
+
+    @Test func anExplicitLaneIsHonoured() throws {
+        let (data, clip) = try fixture()
+        let written = try FCPXMLWriter(lane: 5).addingCaptions(
+            [Caption(lines: ["다섯"], start: 0, end: 2)], to: clip, inDocument: data)
+        #expect(try reader.read(data: written).clips.first?.captions.last?.lane == 5)
+    }
+
+    // What the lane rule is really for: no two captions on one lane may overlap in time.
+    @Test func noTwoCaptionsOnALaneOverlap() throws {
+        let (data, clip) = try fixture()
+        let written = try FCPXMLWriter().addingCaptions([
+            Caption(lines: ["하나"], start: 0, end: 2),
+            Caption(lines: ["둘"], start: 2, end: 4),
+            Caption(lines: ["셋"], start: 4.5, end: 6),
+        ], to: clip, inDocument: data)
+        let captions = try #require(try reader.read(data: written).clips.first?.captions)
+
+        for lane in Set(captions.map { $0.lane ?? 0 }) {
+            let onLane = captions.filter { ($0.lane ?? 0) == lane }
+                .sorted { $0.offset < $1.offset }
+            for (earlier, later) in zip(onLane, onLane.dropFirst()) {
+                #expect((earlier.offset + earlier.duration) <= later.offset)
+            }
+        }
     }
 }

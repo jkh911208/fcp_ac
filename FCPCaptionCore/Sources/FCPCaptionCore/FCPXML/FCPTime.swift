@@ -57,8 +57,12 @@ public struct FCPTime: Sendable, Hashable, Comparable, CustomStringConvertible {
             else { throw FCPXMLError.malformedTime(raw) }
             return FCPTime(numerator, denominator)
         }
-        guard let value = Int(body) else { throw FCPXMLError.malformedTime(raw) }
-        return FCPTime(value)
+        if let value = Int(body) { return FCPTime(value) }
+        // Final Cut Pro always writes a rational, but other tools that produce FCPXML sometimes
+        // write a decimal. Reading one costs nothing and widens what we can open; we still only
+        // ever write rationals.
+        if let value = Double(body), value.isFinite { return FCPTime(seconds: value) }
+        throw FCPXMLError.malformedTime(raw)
     }
 
     // MARK: - Arithmetic

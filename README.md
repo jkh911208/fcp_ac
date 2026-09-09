@@ -4,9 +4,10 @@ Korean auto-captions for Final Cut Pro, without leaving Final Cut Pro.
 
 [한국어 README](README.ko.md) · [Website](https://jkh911208.github.io/fcp_ac/)
 
-> **Status: in development.** Milestone M0 (transcription spike) is done — there is a working
-> CLI, and the caption-splitting rules are covered by tests. The Workflow Extension itself is not
-> built yet, so there is nothing to install from Releases. See [PROGRESS.md](PROGRESS.md).
+> **Status: in development.** The whole caption pipeline works end to end — audio extraction,
+> Korean transcription, caption splitting, and FCPXML that Final Cut Pro can import — but it runs
+> from the command line, because the sidebar extension needs Apple's Workflow Extensions SDK and
+> isn't built yet. See **Use it today** below, and [PROGRESS.md](PROGRESS.md).
 
 ## Why
 
@@ -42,6 +43,34 @@ No telemetry, no analytics, no account. In local mode the app makes no network r
 downloading the transcription model. In OpenRouter mode, audio goes to OpenRouter under your own
 key and nowhere else. Your API key lives in the macOS Keychain and never appears in logs.
 
+## Use it today (no extension yet)
+
+The extension isn't built yet — that needs Apple's Workflow Extensions SDK (see
+[docs/XCODE_SETUP.md](docs/XCODE_SETUP.md)). Until then the same pipeline runs from the command
+line, and the round trip through Final Cut Pro is three steps:
+
+```bash
+cd FCPCaptionCore && swift build -c release
+```
+
+1. **In Final Cut Pro:** select the project in the browser → **File ▸ Export XML…** → save it.
+2. **In Terminal:**
+   ```bash
+   .build/release/fcpcaption-cli ~/Desktop/MyProject.fcpxmld
+   ```
+   It extracts the clip's audio with AVFoundation, transcribes it on this Mac, and writes
+   `MyProject.captioned.fcpxml` next to the input. The first run downloads the model (~600 MB).
+3. **Back in Final Cut Pro:** **File ▸ Import ▸ XML…** and choose the `.captioned.fcpxml`.
+   The captions arrive on the clip's caption lane, in a new project.
+
+Point it at a media file instead and you get a plain `.srt`:
+
+```bash
+.build/release/fcpcaption-cli clip.mov --language ko      # -> clip.srt
+```
+
+Options: `--model large-v3-turbo|small`, `--language ko|auto`, `--output PATH`.
+
 ## Install
 
 Signed and notarized `.dmg` builds will be published on the
@@ -69,7 +98,7 @@ It writes a `.srt` next to the input file.
 | Milestone | What it delivers |
 |---|---|
 | **M0** ✅ | CLI spike: file → WhisperKit → `.srt`, Korean caption rules under test |
-| M1 | Workflow Extension shell: panel in the FCP sidebar, parses dropped FCPXML |
+| **M1** ◐ | FCPXML reader/writer, audio extraction, full pipeline. Extension shell still to come |
 | M2 | Import spike: can captions attach to clips in an already-open project? |
 | M3 | Local end-to-end: drag → transcribe → captions on the timeline |
 | M4 | OpenRouter engine, Keychain, Settings |

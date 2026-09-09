@@ -4,9 +4,10 @@ Final Cut Pro를 떠나지 않고 만드는 한국어 자동 자막.
 
 [English README](README.md) · [웹사이트](https://jkh911208.github.io/fcp_ac/)
 
-> **상태: 개발 중.** 마일스톤 M0(전사 스파이크)까지 완료했습니다. 동작하는 CLI가 있고 자막 분할
-> 규칙은 테스트로 덮여 있지만, Workflow Extension 자체는 아직 만들지 않았습니다. Releases에서
-> 받을 수 있는 빌드는 아직 없습니다. [PROGRESS.md](PROGRESS.md)를 참고하세요.
+> **상태: 개발 중.** 자막 파이프라인 전체가 동작합니다 — 오디오 추출, 한국어 전사, 자막 분할,
+> 그리고 Final Cut Pro가 임포트할 수 있는 FCPXML까지. 다만 사이드바 Extension은 Apple의 Workflow
+> Extensions SDK가 필요해 아직 없어서, 지금은 커맨드라인으로 씁니다. 아래 **지금 바로 쓰기**와
+> [PROGRESS.md](PROGRESS.md)를 참고하세요.
 
 ## 왜 만드나
 
@@ -42,6 +43,34 @@ FCPCaption은 FCP 사이드바에 사는 Workflow Extension입니다. 클립을 
 하지 않습니다. OpenRouter 모드에서는 본인 키로 OpenRouter에만 오디오가 전송됩니다. API 키는 macOS
 Keychain에만 저장되고 로그에는 남지 않습니다.
 
+## 지금 바로 쓰기 (Extension은 아직)
+
+Extension은 Apple의 Workflow Extensions SDK가 필요해서 아직 없습니다
+([docs/XCODE_SETUP.md](docs/XCODE_SETUP.md) 참고). 그때까지 같은 파이프라인을 커맨드라인에서
+돌릴 수 있고, Final Cut Pro 왕복은 세 단계입니다.
+
+```bash
+cd FCPCaptionCore && swift build -c release
+```
+
+1. **Final Cut Pro에서:** 브라우저에서 프로젝트 선택 → **File ▸ Export XML…** → 저장
+2. **터미널에서:**
+   ```bash
+   .build/release/fcpcaption-cli ~/Desktop/내프로젝트.fcpxmld
+   ```
+   클립 오디오를 AVFoundation으로 뽑아 이 Mac에서 전사하고, 입력 파일 옆에
+   `내프로젝트.captioned.fcpxml`을 만듭니다. 첫 실행에서 모델(약 600MB)을 내려받습니다.
+3. **다시 Final Cut Pro에서:** **File ▸ Import ▸ XML…** 로 `.captioned.fcpxml`을 불러오면,
+   새 프로젝트에 자막이 캡션 레인에 붙어 있습니다.
+
+미디어 파일을 넣으면 `.srt`가 나옵니다.
+
+```bash
+.build/release/fcpcaption-cli clip.mov --language ko      # -> clip.srt
+```
+
+옵션: `--model large-v3-turbo|small`, `--language ko|auto`, `--output 경로`.
+
 ## 설치
 
 서명·공증된 `.dmg`를 [Releases 페이지](https://github.com/jkh911208/fcp_ac/releases)에 올릴
@@ -69,7 +98,7 @@ swift run -c release fcpcaption-cli /path/to/clip.mov --model large-v3-turbo --l
 | 마일스톤 | 산출물 |
 |---|---|
 | **M0** ✅ | CLI 스파이크: 파일 → WhisperKit → `.srt`, 한국어 자막 규칙 테스트 |
-| M1 | Extension 껍데기: FCP 사이드바 패널, 드롭된 FCPXML 파싱 |
+| **M1** ◐ | FCPXML 리더/라이터, 오디오 추출, 전체 파이프라인. Extension 껍데기는 아직 |
 | M2 | 임포트 스파이크: 이미 열린 프로젝트의 클립에 캡션을 붙일 수 있는가 |
 | M3 | 로컬 E2E: 드래그 → 전사 → 타임라인에 자막 |
 | M4 | OpenRouter 엔진, Keychain, 설정 화면 |

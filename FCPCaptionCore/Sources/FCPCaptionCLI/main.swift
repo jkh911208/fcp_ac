@@ -1,18 +1,35 @@
 import Foundation
 import FCPCaptionCore
 
-// M0 spike tool: audio file -> WhisperKit -> Korean .srt, with no FCP and no UI in the way.
-// It exists to answer "are the captions any good?" before any of the app is built, and stays
-// afterwards as the fastest way to re-check transcription quality and timing.
+// The whole pipeline without the extension: Korean captions for a Final Cut Pro clip.
 //
-//   swift run fcpcaption-cli <audio-file> [--model large-v3-turbo|small]
-//                            [--language ko|auto] [--output out.srt]
+// Two modes, chosen by what you hand it:
+//
+//   fcpcaption-cli <clip.fcpxml>   -> the same document with captions on its clip, ready to
+//                                     re-import into Final Cut Pro (File > Import > XML...)
+//   fcpcaption-cli <audio/video>   -> a plain .srt, which is how transcription quality gets
+//                                     checked without FCP in the way
+//
+// Options: [--model large-v3-turbo|small] [--language ko|auto] [--output PATH]
 
 struct Arguments {
     var input: URL
     var model: WhisperModel = .largeV3Turbo
     var language: String? = "ko"
     var output: URL?
+
+    /// A `.fcpxml` (or the `Info.fcpxml` inside a `.fcpxmld` bundle) takes the FCP path; anything
+    /// else is treated as media and produces an .srt.
+    var isFCPXML: Bool {
+        ["fcpxml", "fcpxmld"].contains(input.pathExtension.lowercased())
+    }
+
+    /// Never overwrite the document Final Cut Pro exported — write a sibling instead.
+    var defaultOutput: URL {
+        isFCPXML
+            ? input.deletingPathExtension().appendingPathExtension("captioned.fcpxml")
+            : input.deletingPathExtension().appendingPathExtension("srt")
+    }
 
     static func parse(_ raw: [String]) throws -> Arguments {
         var positional: [String] = []
@@ -78,11 +95,14 @@ enum CLIError: LocalizedError {
 
     var usage: String {
         """
-        사용법: fcpcaption-cli <audio-file> [옵션]
+        사용법: fcpcaption-cli <파일> [옵션]
+
+          <파일>이 .fcpxml이면  → 자막을 넣은 .fcpxml (FCP에서 File ▸ Import ▸ XML…)
+          <파일>이 영상/오디오면 → .srt
 
           -m, --model     large-v3-turbo (기본) | small
           -l, --language  ko (기본) | auto | 그 외 언어 코드
-          -o, --output    저장할 .srt 경로 (기본: 입력 파일과 같은 위치)
+          -o, --output    저장 경로 (기본: 입력 파일과 같은 위치)
         """
     }
 }
@@ -91,12 +111,28 @@ func log(_ message: String) {
     FileHandle.standardError.write(Data((message + "\n").utf8))
 }
 
+/// Prints each whole percent once, from whichever thread got there first.
+final class ProgressReporter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lastPercent = -1
+
+    func report(_ label: String, _ fraction: Double) {
+        let percent = Int(fraction * 100)
+        let shouldPrint = lock.withLock {
+            guard percent > lastPercent else { return false }
+            lastPercent = percent
+            return true
+        }
+        if shouldPrint { log("[\(percent)%] \(label)") }
+    }
+}
+
 do {
     let arguments = try Arguments.parse(Array(CommandLine.arguments.dropFirst()))
     guard FileManager.default.fileExists(atPath: arguments.input.path(percentEncoded: false)) else {
         throw CLIError.fileNotFound(arguments.input)
     }
-    let output = arguments.output ?? arguments.input.deletingPathExtension().appendingPathExtension("srt")
+    let output = arguments.output ?? arguments.defaultOutput
 
     log("모델: \(arguments.model.displayName)  언어: \(arguments.language ?? "자동 감지")")
     log("입력: \(arguments.input.lastPathComponent)")
@@ -104,23 +140,38 @@ do {
     let engine = WhisperKitEngine(model: arguments.model)
     let started = Date()
 
-    // Progress arrives from decoding threads; keep the terminal line to whole percents.
-    nonisolated(unsafe) var lastReported = -1
-    let words = try await engine.transcribe(audio: arguments.input, language: arguments.language) { fraction in
-        let percent = Int(fraction * 100)
-        if percent > lastReported {
-            lastReported = percent
-            log("진행률 \(percent)%")
+    // Progress arrives from decoding threads, so the "last percent printed" counter is shared
+    // state and needs a lock, not just a var.
+    let reporter = ProgressReporter()
+    let report: @Sendable (String, Double) -> Void = { label, fraction in reporter.report(label, fraction) }
+
+    if arguments.isFCPXML {
+        let pipeline = CaptionPipeline(engine: engine, language: arguments.language)
+        let source = arguments.input.pathExtension.lowercased() == "fcpxmld"
+            ? arguments.input.appending(path: "Info.fcpxml")
+            : arguments.input
+        let result = try await pipeline.run(document: try Data(contentsOf: source)) { stage, fraction in
+            report(stage.korean, fraction)
         }
+        try result.document.write(to: output)
+
+        log("클립: \(result.clip.name) (\(String(format: "%.1f", result.clip.durationSeconds))초)")
+        log("""
+        완료: 단어 \(result.words)개 → 자막 \(result.captions.count)개, \
+        \(String(format: "%.1f", Date().timeIntervalSince(started)))초 소요
+        """)
+        log("Final Cut Pro에서 File ▸ Import ▸ XML… 로 이 파일을 불러오세요.")
+    } else {
+        let words = try await engine.transcribe(audio: arguments.input, language: arguments.language) { fraction in
+            report("음성을 전사하는 중", fraction)
+        }
+        let captions = CaptionBuilder().build(from: words)
+        try SRTWriter.string(from: captions).write(to: output, atomically: true, encoding: .utf8)
+        log("""
+        완료: 단어 \(words.count)개 → 자막 \(captions.count)개, \
+        \(String(format: "%.1f", Date().timeIntervalSince(started)))초 소요
+        """)
     }
-
-    let captions = CaptionBuilder().build(from: words)
-    try SRTWriter.string(from: captions).write(to: output, atomically: true, encoding: .utf8)
-
-    log("""
-    완료: 단어 \(words.count)개 → 자막 \(captions.count)개, \
-    \(String(format: "%.1f", Date().timeIntervalSince(started)))초 소요
-    """)
     print(output.path(percentEncoded: false))
 } catch let error as CLIError {
     log(error.localizedDescription)

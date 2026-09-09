@@ -3,7 +3,9 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-09-09 · **Current milestone:** M1 in progress (FCPXML layer done).
+**Last updated:** 2026-09-09 · **Current milestone:** M1 in progress. **The pipeline works end to
+end from the command line** — see "Use it today" in the README. Only the extension shell is missing,
+and it is blocked on an Apple SDK download.
 **Repo:** <https://github.com/jkh911208/fcp_ac> · **Site:** <https://jkh911208.github.io/fcp_ac/>
 
 > Bootstrap note: this first commit was made directly on `main` in the main working tree, because
@@ -54,6 +56,24 @@ Two bugs this caught, both now frozen as tests: `FCPTime` arithmetic overflowed 
 Foundation writes `standalone="yes"`, which makes Apple's DTD reject every pretty-printed
 document.
 
+### M1 — audio extraction and the full pipeline (this branch)
+
+- `AudioExtractor` — AVFoundation only (`AVAssetReader` → 16 kHz mono WAV), which is what makes
+  video files work at all: WhisperKit loads audio through `AVAudioFile`, and that cannot open a
+  `.mov`. Extracts only the range the clip actually uses, so trimmed-away footage isn't captioned.
+- `CaptionPipeline` — FCPXML in, captioned FCPXML out, with staged Korean progress text. This is
+  the piece the extension panel will drive; the CLI drives it today.
+- `fcpcaption-cli` now takes either: a `.fcpxml`/`.fcpxmld` (→ `*.captioned.fcpxml` to re-import)
+  or a media file (→ `.srt`).
+
+**Verified on the user's own 24.5s Korean clip:** 41 words → 5 captions in 5.9s with the model
+cached, and the output validates against Apple's DTD. Two bugs that only appeared when running it
+for real, both now tests:
+- our captions landed on lane 1 **on top of a caption the editor had already typed there**. The
+  writer now picks the first free lane, so the editor's work is never overlapped.
+- frame quantization (start rounds down, end rounds up) made two adjacent captions overlap by a
+  frame even though they didn't overlap in seconds — invalid on one caption lane.
+
 ### M0 and setup
 
 - **Repo, rules, CI.** `CLAUDE.md` (ported from the sibling `shiftly` repo and adapted to
@@ -83,12 +103,16 @@ document.
 - **Whether a two-line caption may be one text run** is unverified. FCP splits its own line breaks
   into separate runs; we write `line1\nline2` in a single run, which the DTD accepts. If FCP
   imports it wrong, mirror the fixture's run-per-line shape.
-- **`AudioExtractor` is not written.** M0 hands the file straight to WhisperKit, which loads and
-  windows audio itself. The spec's 5-minute chunking with 2s overlap is still needed for the
-  OpenRouter engine (upload size) and possibly for progress granularity on long clips — decide
-  when M3/M4 make the requirement concrete, rather than building it speculatively now.
-- **Caption quality is only smoke-tested.** The one sample was synthesized speech, which is
-  cleaner than real recordings. Needs the real 1/15/60-minute Korean clips (see Blocked).
+- **Chunking is not implemented.** `AudioExtractor` writes one file and WhisperKit windows it
+  internally, which is fine on device. The spec's 5-minute chunks with 2s overlap are still needed
+  for the OpenRouter engine (upload size) — build them when M4 makes the requirement concrete.
+  A 60-minute clip has not been tried; 16 kHz mono float for an hour is ~230 MB in memory.
+- **Caption quality is spot-checked, not measured.** One 24.5s real clip and one synthesized
+  sample. The ±0.3s timing bar in the spec's definition of done has not been measured against
+  anything. Needs the 1/15/60-minute clips.
+- **Nobody has imported our FCPXML into Final Cut Pro yet.** The document is valid against Apple's
+  DTD and structurally identical to a real export, which is as far as automated checking goes —
+  whether FCP accepts it is the M2 question and needs one human import.
 - **M2 is the project's real risk** and is untouched: can a Workflow Extension attach captions to
   clips in an *already-open* project via FCPXML import? Fallback ladder in spec §10.
 
