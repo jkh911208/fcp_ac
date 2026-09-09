@@ -12,20 +12,61 @@ Record the date and the result. A checklist with no dates is a checklist nobody 
   that several copies get discovered and which one wins is undefined)
 - Korean test clips of about **1 minute**, **15 minutes** and **60 minutes**
 
-## 1. The panel appears
+## 1. The panel appears and shows its settings
 
 - [ ] **Window ▸ Extensions ▸ FCPCaption** exists
 - [ ] Clicking it opens the panel
 - [ ] The panel is legible at the FCP sidebar's narrowest width
 - [ ] It follows the system appearance in both light and dark
 
-## 2. A dropped clip
+## 2. A dropped project
 
-- [ ] Dragging a timeline clip onto the panel shows that clip's name and duration
+- [ ] Dragging a project from the browser onto the panel shows its clips and total duration
 - [ ] The name matches the clip, not the media file, when they differ
 - [ ] Dropping something that is not a clip gives a Korean message, not a hang
-- [ ] `log show --last 5m --predicate 'subsystem == "com.jkh911208.FCPCaption"'` names the
-      pasteboard types that arrived — **record them**, they are still undocumented
+- [ ] `/usr/bin/log show --last 5m --predicate 'subsystem == "com.jkh911208.FCPCaption"'` names
+      the pasteboard types that arrived — **record them**, they are still undocumented.
+      Use the full path: `log` is also a zsh builtin, and the builtin fails with "too many
+      arguments" while looking, at a glance, like a query that simply found nothing.
+
+### 2a. The drop must survive a *fast* release
+
+This is the one that regressed once, and no unit test can hold it: the drag path is AppKit
+callbacks, not package code. **Drop with a quick flick — press, drag, release immediately** —
+rather than hovering first. Repeat five times on a panel that has just been opened.
+
+- [ ] Every one of the five is picked up
+- [ ] For each, the log shows `drag entered` **followed by** `using pasteboard data`. A `drag
+      entered` with nothing after it is the failure: `performDragOperation` was never called
+- [ ] In `host-trace.txt` (see below), no `took N ms` line that immediately follows a drag is
+      more than a few hundred ms
+
+Why it matters: `HostContext.refresh()` makes synchronous calls into Final Cut Pro, which is
+itself blocked waiting for the drag callback to return. Measured at ~2000 ms when it resolves a
+sequence, and a mouse release inside that window loses the drop entirely. Anything slow must stay
+out of `draggingEntered` and `performDragOperation`. The trace is at:
+
+```
+~/Library/Containers/com.jkh911208.FCPCaption.Extension/Data/Library/Application Support/FCPCaption/host-trace.txt
+```
+
+Note the cruel shape of this bug: it only appears when the host lookup **succeeds**. A panel that
+cannot read the project at all drops perfectly.
+
+## 2b. Settings are in the panel, not behind a button
+
+- [ ] The model, language, form, style and splitting rules are all visible by scrolling the panel
+- [ ] Changing one and closing the panel keeps the change on reopen
+- [ ] During a run, the settings are visibly dimmed and cannot be changed
+
+## 2c. Reporting a problem
+
+- [ ] **문제 신고** at the bottom of the panel offers a save panel, writes a zip, and reveals it
+- [ ] The zip holds `report.md`, `log.txt` and `host-trace.txt`
+- [ ] `report.md` names this Mac, this macOS build, and **Final Cut Pro's version**
+- [ ] It contains no name, serial number, hostname or file path
+- [ ] A GitHub issue opens with the environment table already in the body
+- [ ] After a failure, **이 오류 신고하기** puts the error message into the report
 
 ## 3. Transcription — 1 minute
 

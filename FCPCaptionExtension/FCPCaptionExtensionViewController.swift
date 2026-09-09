@@ -1,5 +1,6 @@
 import Cocoa
 import FCPCaptionCore
+import UniformTypeIdentifiers
 import FCPCaptionUI
 import SwiftUI
 import os
@@ -27,14 +28,19 @@ final class FCPCaptionExtensionViewController: NSViewController {
             let dropView = CaptionDropView(frame: NSRect(x: 0, y: 0, width: 340, height: 420))
             dropView.onDrop = { [weak model] data in
                 MainActor.assumeIsolated {
-                    // Asked here because Final Cut Pro is frontmost during a drag; by the time the
-                    // user presses the button the panel has focus and the host reports no active
-                    // sequence at all.
-                    HostContext.refresh()
+                    // Show the clips first: parsing is instant, and the host walk below is not.
                     model?.receive(data)
+                    // Asked immediately after the drop, because that is the last moment Final Cut
+                    // Pro is frontmost — by the time the user presses the button the panel has
+                    // focus and the host reports no active sequence at all.
+                    //
+                    // It must not move any earlier than this. Asking during the drag blocked
+                    // Final Cut Pro while it waited for the drag callback to return, and a mouse
+                    // release inside that window lost the drop outright. `CaptionDropView` calls
+                    // this handler a runloop turn after the drag ends for the same reason.
+                    DispatchQueue.main.async { HostContext.refresh() }
                 }
             }
-            dropView.onDragEntered = { HostContext.refresh() }
 
             let panel = NSHostingView(rootView: PanelView(
                 model: model,
@@ -43,6 +49,9 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 },
                 onSaveCaptionFile: { contents, baseName in
                     MainActor.assumeIsolated { Self.saveCaptionFile(contents, baseName: baseName) }
+                },
+                onReportProblem: { note in
+                    MainActor.assumeIsolated { Self.reportProblem(note: note) }
                 }
             ))
             panel.translatesAutoresizingMaskIntoConstraints = false
@@ -84,7 +93,6 @@ final class FCPCaptionExtensionViewController: NSViewController {
     @MainActor
     private static func makeModel() -> PanelModel {
         PanelModel(
-            engineLabel: "",
             makePipeline: { settings in
                 CaptionPipeline(
                     engine: WhisperKitEngine(model: settings.model, options: settings.engine),
@@ -134,6 +142,51 @@ final class FCPCaptionExtensionViewController: NSViewController {
             Self.log.error("caption file save failed: \(error.localizedDescription, privacy: .public)")
             NSAlert(error: error).runModal()
         }
+    }
+
+    /// Collects a diagnostics zip, lets the user save it, and opens a prefilled issue.
+    ///
+    /// Nothing is sent anywhere by this app. The user saves a file they can open and read, and
+    /// then attaches it themselves to an issue they can edit before posting — which is the only
+    /// shape a bug report can take in something that promises no server and no telemetry.
+    @MainActor
+    private static func reportProblem(note: String) {
+        let profile = SystemProfile.current(host: hostDescription())
+        let contents = DiagnosticsBundle.Contents(
+            profile: profile,
+            note: note,
+            attachments: [HostContext.traceFileURL].compactMap { $0 }
+        )
+
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "FCPCaption-진단"
+        panel.allowedContentTypes = [.zip]
+        panel.canCreateDirectories = true
+        panel.message = "저장한 뒤 열리는 GitHub 페이지에 이 파일을 첨부해 주세요. 내용은 저장 후 직접 확인하실 수 있습니다."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            try DiagnosticsBundle.write(contents, to: url)
+            Self.log.notice("diagnostics written")
+        } catch {
+            Self.log.error("diagnostics failed: \(error.localizedDescription, privacy: .public)")
+            NSAlert(error: error).runModal()
+            return
+        }
+
+        // Shown in Finder rather than silently saved: the user is about to upload it, and being
+        // told what is in it only helps if they can find it.
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        if let issue = DiagnosticsBundle.issueURL(contents: contents) {
+            NSWorkspace.shared.open(issue)
+        }
+    }
+
+    /// What the host says it is, for the report. Nil outside Final Cut Pro, which is worth seeing.
+    @MainActor
+    private static func hostDescription() -> String? {
+        guard let host = ProExtensionHostSingleton() as? FCPXHost else { return nil }
+        return "\(host.name) \(host.versionString)"
     }
 
     /// Runs `work` on the main thread, synchronously, wherever it is called from.

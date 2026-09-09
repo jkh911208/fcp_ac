@@ -11,10 +11,10 @@ import SwiftUI
 //   swift run PanelPreview <output-directory> [light|dark]
 
 @MainActor
-func render(_ view: some View, to url: URL, appearance: NSAppearance.Name) {
-    let hosting = NSHostingView(rootView: view.frame(width: 340, height: 380))
+func render(_ view: some View, to url: URL, appearance: NSAppearance.Name, height: CGFloat = 380) {
+    let hosting = NSHostingView(rootView: view.frame(width: 340, height: height))
     hosting.appearance = NSAppearance(named: appearance)
-    hosting.frame = CGRect(x: 0, y: 0, width: 340, height: 380)
+    hosting.frame = CGRect(x: 0, y: 0, width: 340, height: height)
 
     guard let rep = hosting.bitmapImageRepForCachingDisplay(in: hosting.bounds) else { return }
     hosting.cacheDisplay(in: hosting.bounds, to: rep)
@@ -43,20 +43,12 @@ func run() {
 
     func model(_ state: PanelModel.State) -> PanelModel {
         let model = PanelModel(
-            engineLabel: "이 Mac에서 · large-v3-turbo",
             makePipeline: { _ in fatalError("preview only") },
             deliver: { _, _ in URL(filePath: "/tmp/preview.fcpxml") }
         )
         model.setStateForPreview(state)
         return model
     }
-
-    // The settings screen renders as its own state for review, like the rest.
-    let settingsModel = model(.waiting)
-    settingsModel.showsSettings = true
-    render(PanelView(model: settingsModel, onOpenInFinalCut: { _ in }, onSaveCaptionFile: { _, _ in }),
-           to: directory.appending(path: "panel-6-settings-\(appearance == .darkAqua ? "dark" : "light").png"),
-           appearance: appearance)
 
     let states: [(String, PanelModel.State)] = [
         ("1-waiting", .waiting),
@@ -73,11 +65,15 @@ func run() {
                              canRetry: true)),
     ]
 
+    // Tall on purpose: the settings sit under every state now, so a 380pt crop would hide the
+    // part being reviewed.
     for (name, state) in states {
         render(
-            PanelView(model: model(state), onOpenInFinalCut: { _ in }),
+            PanelView(model: model(state), onOpenInFinalCut: { _ in }, onSaveCaptionFile: { _, _ in },
+                      onReportProblem: { _ in }),
             to: directory.appending(path: "panel-\(name)-\(appearance == .darkAqua ? "dark" : "light").png"),
-            appearance: appearance
+            appearance: appearance,
+            height: 2400
         )
     }
 }

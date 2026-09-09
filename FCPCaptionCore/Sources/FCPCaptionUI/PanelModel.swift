@@ -69,17 +69,13 @@ public final class PanelModel {
     }
 
     public private(set) var state: State = .waiting
-    /// The engine label shown under the clip, e.g. "이 Mac에서 · large-v3-turbo".
-    public var engineLabel: String
     /// Saved on every change, so closing the panel mid-edit does not lose the setting.
     public var settings: FCPCaptionSettings {
         didSet {
             guard settings != oldValue else { return }
             store?.save(settings)
-            engineLabel = Self.label(for: settings)
         }
     }
-    public var showsSettings = false
 
     private var document: Data?
     private var clips: [ClipRef] = []
@@ -102,28 +98,21 @@ public final class PanelModel {
         return name.isEmpty ? "자막" : name
     }
 
-    public static func label(for settings: FCPCaptionSettings) -> String {
-        "이 Mac에서 · \(settings.model.displayName)"
-    }
-
     /// - Parameters:
     ///   - makePipeline: builds the pipeline per run, so a cancelled engine is never reused.
     ///   - deliver: writes the captioned document somewhere Final Cut Pro can open it, and
     ///     returns where it went. Injected because "somewhere" is a policy the extension and the
     ///     tests answer differently.
     public init(
-        engineLabel: String,
         makePipeline: @escaping @Sendable (FCPCaptionSettings) -> CaptionPipeline,
         deliver: @escaping @Sendable (Data, ClipRef) throws -> URL,
         store: SettingsStore? = nil,
         settings: FCPCaptionSettings = .default
     ) {
-        self.engineLabel = engineLabel
         self.makePipeline = makePipeline
         self.deliver = deliver
         self.store = store
         self.settings = store?.load() ?? settings
-        self.engineLabel = Self.label(for: self.settings)
     }
 
     // MARK: - Input

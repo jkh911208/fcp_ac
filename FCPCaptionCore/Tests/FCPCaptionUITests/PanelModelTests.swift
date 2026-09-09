@@ -65,7 +65,6 @@ struct PanelModelTests {
         deliver: (@Sendable (Data, ClipRef) throws -> URL)? = nil
     ) -> PanelModel {
         PanelModel(
-            engineLabel: "이 Mac에서 · large-v3-turbo",
             makePipeline: { _ in CaptionPipeline(engine: engine) },
             deliver: deliver ?? { data, clip in
                 let url = URL(filePath: NSTemporaryDirectory())

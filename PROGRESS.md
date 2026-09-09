@@ -274,6 +274,69 @@ and refuses to continue if the copy into the image lost the ticket. `cp -R` is n
 same reason. The lesson is the one this file keeps relearning: check the artifact a user ends up
 with, not the one the script last touched.
 
+### The drop that sometimes did not arrive (2026-09-09)
+
+Reported as "opening the extension for the first time, dragging a project sometimes does nothing;
+closing and reopening fixes it." The cause was `HostContext.refresh()` being called **synchronously
+from inside `draggingEntered`**. Every property read there is a synchronous call into Final Cut
+Pro — which is itself blocked waiting for that callback to return — so the main thread stalled for
+about two seconds, and a mouse release inside that window meant `performDragOperation` was never
+called at all. The drop was simply gone.
+
+The evidence is in the log and `host-trace.txt` together, and it inverts the obvious guess:
+
+| host lookup | elapsed | drop |
+|---|---|---|
+| `activeSequence` resolved | ~2 s | **lost**, 3 times out of 3 |
+| `activeSequence` nil | immediate | delivered, 3 times out of 3 |
+
+**It only failed when it worked.** A lookup that resolves a sequence, its event and its library
+does far more cross-process work than one that finds nothing. And that is why reopening the panel
+"fixed" it: the panel takes focus, Final Cut Pro then reports no active sequence, the lookup
+returns at once — the drop lands *because the project context was given up*.
+
+Fixed by taking the host lookup off the drag path entirely: `performDragOperation` reads the
+pasteboard (local, fast) and hands it on one runloop turn later, and the refresh happens after the
+drop is accepted, while Final Cut Pro is still frontmost. `read()` now records its own elapsed time
+in the trace, so a return of this is visible rather than inferred.
+
+Not coverable by a unit test — it is AppKit drag callbacks, outside the package. It is a checklist
+item in `docs/MANUAL_TEST.md` §2a instead, written so it fails loudly: drop with a *fast* release,
+five times, and check the log shows `using pasteboard data` after every `drag entered`.
+
+**Also:** re-signing with Developer ID gave the app a new identity, so the automation permission
+granted to the earlier ad-hoc build no longer applies. It has to be granted again in System
+Settings ▸ Privacy & Security ▸ Automation. Worth expecting after any signing-identity change.
+
+### Settings moved into the panel (2026-09-09, user's decision)
+
+They were behind a gear button that opened a full-screen settings view. In a 300pt sidebar that is
+a small target hiding most of what the panel does, and the panel had a screenful of empty space
+under the button anyway. Everything is now one scrolling column: state on top, every setting below
+it, dimmed and non-interactive during a run. The `이 Mac에서 · large-v3` footer went with it — the
+model radio group says the same thing, in place.
+
+Rendered before/after first, per `CLAUDE.md`. `swift run PanelPreview <dir> [light|dark]` writes a
+PNG per state and is how any further change here should be reviewed.
+
+### Bug reports carry their own evidence (2026-09-09)
+
+**문제 신고** in the panel — and **이 오류 신고하기** on a failure, with the error already in hand —
+collects a zip and opens a prefilled GitHub issue. What goes in: Mac model, CPU, core split, RAM,
+macOS version *and build* (the ANE cache is keyed to the build), FCPCaption's version, what the
+ProExtension host says it is, this process's own `OSLogStore` entries, and `host-trace.txt`.
+
+Everything is read in-process — `sysctlbyname`, not a spawned `sysctl`, because a sandboxed
+extension cannot spawn anything — and the zip comes from `NSFileCoordinator(.forUploading)`, which
+is how a sandboxed app makes an archive without a `zip` binary.
+
+**Nothing is uploaded.** The user saves a file they can open and read, Finder reveals it, and an
+issue opens for them to edit before posting. A token shipped inside the app to upload on their
+behalf is a token anyone can extract from the app, and this project promises no server and no
+telemetry — so the person who decides what leaves the machine is the person whose machine it is.
+A test pins the report's rows by name, so adding a serial number or a user name fails the build
+rather than shipping quietly in everyone's reports.
+
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.

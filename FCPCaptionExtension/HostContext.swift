@@ -31,6 +31,9 @@ enum HostContext {
     /// `os_log` from this extension does not reach `log show` — several attempts produced nothing
     /// at all — and a silent failure here looks exactly like a working feature until someone
     /// checks the library. A file in our own container is crude and it is legible.
+    /// Exposed so a bug report can attach it — it is the only record of what the host answered.
+    static var traceFileURL: URL? { traceURL }
+
     private static var traceURL: URL? {
         try? FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
@@ -38,19 +41,26 @@ enum HostContext {
             .appending(path: "host-trace.txt")
     }
 
+    /// Serial, so entries keep their order without holding up whoever wrote them.
+    private static let traceQueue = DispatchQueue(label: "com.jkh911208.FCPCaption.host-trace")
+
     private static func trace(_ lines: [String]) {
         guard let traceURL else { return }
         let stamp = ISO8601DateFormatter().string(from: .now)
         let text = ([stamp] + lines).joined(separator: "\n") + "\n\n"
-        try? FileManager.default.createDirectory(
-            at: traceURL.deletingLastPathComponent(), withIntermediateDirectories: true)
-        // Bounded: this is written every time the panel appears, and a diagnostic that fills a
-        // disk is not a diagnostic.
-        let existing = (try? String(contentsOf: traceURL, encoding: .utf8)) ?? ""
-        let combined = existing.count > 32_768
-            ? String(existing.suffix(16_384)) + text
-            : existing + text
-        try? Data(combined.utf8).write(to: traceURL, options: .atomic)
+        // Off the calling thread: this reads and rewrites the whole file, and the caller is
+        // usually the main thread in the middle of something the user can feel.
+        traceQueue.async {
+            try? FileManager.default.createDirectory(
+                at: traceURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+            // Bounded: this is written every time the panel appears, and a diagnostic that fills a
+            // disk is not a diagnostic.
+            let existing = (try? String(contentsOf: traceURL, encoding: .utf8)) ?? ""
+            let combined = existing.count > 32_768
+                ? String(existing.suffix(16_384)) + text
+                : existing + text
+            try? Data(combined.utf8).write(to: traceURL, options: .atomic)
+        }
     }
 
     /// The last answer worth keeping.
@@ -122,7 +132,14 @@ enum HostContext {
     }
 
     /// Walks up from the active sequence to its event and library.
+    ///
+    /// **Every property read here is a synchronous call into Final Cut Pro**, so this is slow in
+    /// proportion to how much it finds: a walk that resolves a sequence, its event and its library
+    /// measured about two seconds, while one that finds no sequence returns almost at once. That
+    /// asymmetry is why the elapsed time is recorded — a caller that blocks the main thread for
+    /// two seconds is a bug waiting to be reintroduced, and it should be visible when it is.
     private static func read() -> FCPXMLContainer {
+        let started = DispatchTime.now()
         var notes: [String] = []
         let host = ProExtensionHostSingleton() as AnyObject?
         notes.append("host: \(host.map { String(describing: type(of: $0)) } ?? "nil")")
@@ -143,7 +160,10 @@ enum HostContext {
             // Almost always the automation permission. The host interface talks to Final Cut Pro
             // over Apple Events, and until the user allows that in System Settings the properties
             // simply come back nil — no error, no exception, nothing in any log.
-            trace(notes + ["-> no active sequence; likely the automation permission is not granted"])
+            trace(notes + [
+                "-> no active sequence; likely the automation permission is not granted",
+                elapsed(since: started),
+            ])
             return FCPXMLContainer()
         }
 
@@ -169,7 +189,12 @@ enum HostContext {
         }
 
         notes.append("-> event=\(container.eventName ?? "none") uid=\(container.eventUID ?? "none") library=\(container.libraryURL?.lastPathComponent ?? "none")")
-        trace(notes)
+        trace(notes + [elapsed(since: started)])
         return container
+    }
+
+    private static func elapsed(since started: DispatchTime) -> String {
+        let ms = Double(DispatchTime.now().uptimeNanoseconds - started.uptimeNanoseconds) / 1_000_000
+        return String(format: "took %.0f ms on %@", ms, Thread.isMainThread ? "the main thread" : "a background thread")
     }
 }
