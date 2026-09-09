@@ -150,9 +150,9 @@
 
 <main>
   <div class="wrap hero">
-    <div class="badge" data-en="In development — M0 done">개발 중 — M0 완료</div>
+    <div class="badge" data-en="v0.1.0 — signed and notarized">v0.1.0 — 서명·공증 완료</div>
     <h1 data-en="Korean auto-captions, without leaving Final Cut Pro.">Final Cut Pro를 떠나지 않고<br>만드는 한국어 자동 자막.</h1>
-    <p class="lede" data-en="Drag a clip onto the sidebar panel. The audio is transcribed on your Mac and the Korean captions land on the timeline&rsquo;s caption lane, attached to the clip they came from. Free, open source, no account.">클립을 사이드바 패널로 끌어다 놓으면, 이 Mac에서 음성을 전사해 한국어 자막을 원본 클립에 연결된 채로 타임라인 캡션 레인에 올려 줍니다. 무료, 오픈소스, 계정 없음.</p>
+    <p class="lede" data-en="Drag your project onto the sidebar panel. The audio is transcribed on your Mac and the Korean captions come back on the timeline, on the clips they were spoken over. Free, open source, no account, no server.">프로젝트를 사이드바 패널에 끌어다 놓으면, 이 Mac에서 음성을 전사해 한국어 자막이 그 말이 나온 클립 위로 타임라인에 돌아옵니다. 무료, 오픈소스, 계정 없음, 서버 없음.</p>
 
     <div class="download" id="release">
       <div class="info">
@@ -176,7 +176,7 @@
         </div>
         <div class="card good">
           <h3 data-en="With FCPCaption">FCPCaption에서는</h3>
-          <p data-en="A panel in the FCP sidebar. Drag, wait for the progress bar, done — the captions are already on the timeline, in the caption lane, attached to the clip.">FCP 사이드바의 패널 하나. 끌어다 놓고 진행률이 끝나면 그걸로 끝입니다 — 자막은 이미 타임라인 캡션 레인에, 클립에 연결된 채로 올라와 있습니다.</p>
+          <p data-en="A panel in the FCP sidebar. Drag the project in, wait for the progress bar, and the captions go straight back onto the timeline — as captions, as titles, or both, styled the way you set them.">FCP 사이드바의 패널 하나. 프로젝트를 끌어다 놓고 진행률이 끝나면 자막이 그대로 타임라인으로 돌아옵니다 — 캡션으로든, 타이틀로든, 둘 다든, 지정한 글자 모양 그대로.</p>
         </div>
       </div>
     </div>
@@ -188,20 +188,20 @@
       <p class="sub" data-en="Four steps, none of which ask you to switch apps.">앱을 바꿔 탈 일 없는 네 단계.</p>
       <ol class="steps">
         <li>
-          <strong data-en="Drag the clip onto the panel">클립을 패널로 드래그</strong>
-          <p data-en="Final Cut Pro hands the extension the clip&rsquo;s FCPXML — media path, timeline position, frame rate.">Final Cut Pro가 클립의 FCPXML을 넘겨줍니다 — 미디어 경로, 타임라인 위치, 프레임레이트.</p>
+          <strong data-en="Drag the project onto the panel">프로젝트를 패널로 드래그</strong>
+          <p data-en="From the browser, where Final Cut Pro starts drags. It hands the extension the project&rsquo;s FCPXML — every clip, its media path, its timeline position, the frame rate.">Final Cut Pro가 드래그를 시작하는 곳, 브라우저에서요. 프로젝트의 FCPXML이 넘어옵니다 — 모든 클립, 미디어 경로, 타임라인 위치, 프레임레이트.</p>
         </li>
         <li>
           <strong data-en="Audio is extracted with AVFoundation">AVFoundation으로 오디오 추출</strong>
-          <p data-en="Straight from the original media. No ffmpeg, no re-encode round trip, no temporary export you have to clean up.">원본 미디어에서 바로. ffmpeg도, 재인코딩 왕복도, 나중에 지워야 할 임시 파일도 없습니다.</p>
+          <p data-en="Straight from the original media, and only the range each clip actually uses — footage you cut away is never transcribed. No ffmpeg, no re-encode, no temporary export to clean up.">원본 미디어에서 바로, 그것도 각 클립이 실제로 쓰는 구간만 — 잘라낸 부분은 전사하지 않습니다. ffmpeg도, 재인코딩도, 나중에 지워야 할 임시 파일도 없습니다.</p>
         </li>
         <li>
-          <strong data-en="Transcribed on this Mac — or with your own API key">이 Mac에서 전사 — 또는 본인 API 키로</strong>
-          <p data-en="WhisperKit runs large-v3-turbo on the Neural Engine; the model downloads once and then nothing leaves the machine. Prefer not to spend the compute? Point it at OpenRouter with your own key.">WhisperKit이 large-v3-turbo를 Neural Engine에서 돌립니다. 모델은 한 번만 내려받고, 그 뒤로는 아무것도 기기를 떠나지 않습니다. 로컬 연산을 아끼고 싶다면 본인 OpenRouter 키를 쓰면 됩니다.</p>
+          <strong data-en="Transcribed on this Mac">이 Mac에서 전사</strong>
+          <p data-en="WhisperKit runs Whisper large-v3 on the Neural Engine. The model downloads once, and after that nothing leaves the machine. Want it faster? large-v3-turbo is a setting away.">WhisperKit이 Whisper large-v3를 Neural Engine에서 돌립니다. 모델은 한 번만 내려받고, 그 뒤로는 아무것도 기기를 떠나지 않습니다. 더 빠르게 쓰고 싶으면 설정에서 large-v3-turbo로.</p>
         </li>
         <li>
           <strong data-en="Split by Korean subtitle rules, then written back to FCP">한국어 자막 규칙으로 나눠 FCP에 되돌려쓰기</strong>
-          <p data-en="18 characters a line, two lines, 1&ndash;6 seconds, breaking on silence and punctuation and never mid-어절. Every number is adjustable in Settings.">한 줄 18자, 최대 두 줄, 1~6초. 침묵과 문장 부호에서 끊고 어절은 중간에서 자르지 않습니다. 모든 값은 설정에서 조정할 수 있습니다.</p>
+          <p data-en="18 characters a line, two lines, 1&ndash;6 seconds, breaking on silence and punctuation and never mid-어절 — every number adjustable. Then either save an .itt and use File ▸ Import ▸ Captions…, or send it to Final Cut Pro and press Replace: the project you were editing is updated in place.">한 줄 18자, 최대 두 줄, 1~6초. 침묵과 문장 부호에서 끊고 어절은 중간에서 자르지 않습니다 — 값은 전부 조정할 수 있습니다. 그다음 .itt로 저장해 File ▸ Import ▸ Captions…로 넣거나, Final Cut Pro로 바로 보내 Replace를 누르면 편집하던 프로젝트가 제자리에서 갱신됩니다.</p>
         </li>
       </ol>
     </div>
@@ -216,15 +216,16 @@
             <li data-en="Apple silicon Mac (M-series). Intel is out of scope — the model runs on the Neural Engine."><strong>Apple silicon</strong> Mac (M 시리즈). 인텔은 범위 밖입니다 — 모델이 Neural Engine에서 돌아갑니다.</li>
             <li data-en="macOS 15 (Sequoia) or later">macOS 15 (Sequoia) 이상</li>
             <li data-en="Final Cut Pro 12.x">Final Cut Pro 12.x</li>
-            <li data-en="For the cloud engine only: your own OpenRouter API key">클라우드 엔진을 쓸 때만: 본인 OpenRouter API 키</li>
+            <li data-en="About 3 GB of disk for the model, downloaded once">모델용 디스크 약 3GB, 최초 1회 다운로드</li>
+            <li data-en="To send a project straight back, allow FCPCaption to control Final Cut Pro when macOS asks. Saving a caption file needs no permission.">프로젝트를 바로 되돌려 보내려면 macOS가 물어볼 때 Final Cut Pro 제어를 허용하면 됩니다. 자막 파일 저장은 권한이 필요 없습니다.</li>
           </ul>
         </div>
         <div>
           <h2 data-en="Privacy">개인정보</h2>
           <ul class="plain">
             <li data-en="No telemetry, no analytics, no account.">텔레메트리도, 애널리틱스도, 계정도 없습니다.</li>
-            <li data-en="In local mode the app makes no network request except the one-time model download.">로컬 모드에서는 모델 다운로드 한 번 외에 네트워크 요청을 하지 않습니다.</li>
-            <li data-en="Your API key is stored in the macOS Keychain and never written to a log.">API 키는 macOS Keychain에만 저장되고 로그에는 남지 않습니다.</li>
+            <li data-en="The one network request it makes is the model download, once. There is no server to talk to.">이 앱이 하는 네트워크 요청은 모델 다운로드 한 번뿐입니다. 이야기할 서버 자체가 없습니다.</li>
+            <li data-en="Your audio and your transcript never leave the Mac.">오디오도 전사 결과도 Mac을 떠나지 않습니다.</li>
             <li data-en="MIT licensed — the whole thing is readable on GitHub.">MIT 라이선스 — 전부 GitHub에서 읽을 수 있습니다.</li>
           </ul>
         </div>
@@ -241,12 +242,12 @@
           <tr><th data-en="Stage">단계</th><th data-en="Deliverable">산출물</th></tr>
         </thead>
         <tbody>
-          <tr><td class="done">M0 ✅</td><td data-en="Transcription spike: file → WhisperKit → .srt, Korean caption rules under test">전사 스파이크: 파일 → WhisperKit → .srt, 한국어 자막 규칙 테스트</td></tr>
-          <tr><td>M1</td><td data-en="Workflow Extension shell: a panel in the FCP sidebar that parses dropped FCPXML">Extension 껍데기: FCP 사이드바 패널, 드롭된 FCPXML 파싱</td></tr>
-          <tr><td>M2</td><td data-en="Import spike: can captions attach to clips in an already-open project?">임포트 스파이크: 이미 열린 프로젝트의 클립에 캡션을 붙일 수 있는가</td></tr>
-          <tr><td>M3</td><td data-en="Local end to end: drag → transcribe → captions on the timeline">로컬 E2E: 드래그 → 전사 → 타임라인에 자막</td></tr>
-          <tr><td>M4</td><td data-en="OpenRouter engine, Keychain, Settings">OpenRouter 엔진, Keychain, 설정 화면</td></tr>
-          <tr><td>M5</td><td data-en="Signed and notarized dmg, GitHub Actions build">서명·공증 dmg, GitHub Actions 빌드</td></tr>
+          <tr><td class="done">M0 ✅</td><td data-en="Transcription spike: file → WhisperKit → .srt">전사 스파이크: 파일 → WhisperKit → .srt</td></tr>
+          <tr><td class="done">M1 ✅</td><td data-en="FCPXML reader and writer, audio extraction, the extension itself">FCPXML 리더·라이터, 오디오 추출, Extension 본체</td></tr>
+          <tr><td class="done">M2 ✅</td><td data-en="Every delivery route tried in real Final Cut Pro — captions, titles, import, Replace">실제 Final Cut Pro에서 모든 전달 경로를 시험 — 캡션, 타이틀, 임포트, Replace</td></tr>
+          <tr><td class="done">M3 ✅</td><td data-en="Drag a project in, captions on the timeline">프로젝트를 끌어다 놓으면 타임라인에 자막</td></tr>
+          <tr><td>M4</td><td data-en="OpenRouter engine — deferred, the local model is good enough">OpenRouter 엔진 — 보류. 로컬 모델로 충분합니다</td></tr>
+          <tr><td class="done">M5 ✅</td><td data-en="Signed and notarized dmg on GitHub Releases">GitHub Releases에 서명·공증 dmg</td></tr>
         </tbody>
       </table>
     </div>
@@ -254,11 +255,17 @@
 
   <section>
     <div class="wrap">
-      <h2 data-en="Try it before the app exists">앱이 나오기 전에 먼저 써보기</h2>
-      <p class="sub" data-en="The transcription half already works as a command-line tool. It writes an .srt next to any audio or video file.">전사 부분은 이미 커맨드라인 도구로 동작합니다. 아무 오디오·비디오 파일 옆에 .srt를 만들어 줍니다.</p>
-      <pre><code>git clone git@github.com:jkh911208/fcp_ac.git
-cd fcp_ac/FCPCaptionCore
-swift run -c release fcpcaption-cli /path/to/clip.mov --language ko</code></pre>
+      <h2 data-en="Installing">설치</h2>
+      <p class="sub" data-en="Three steps, and the panel is in your sidebar.">세 단계면 패널이 사이드바에 들어옵니다.</p>
+      <ol class="steps">
+        <li><strong data-en="Open the dmg and drag FCPCaption into Applications">dmg를 열어 FCPCaption을 응용 프로그램으로</strong>
+          <p data-en="Signed and notarized, so it opens with no Gatekeeper warning.">서명·공증된 빌드라 Gatekeeper 경고 없이 열립니다.</p></li>
+        <li><strong data-en="Launch it once">한 번 실행</strong>
+          <p data-en="That is how macOS registers the extension with Final Cut Pro.">그래야 macOS가 Extension을 Final Cut Pro에 등록합니다.</p></li>
+        <li><strong data-en="In Final Cut Pro: Window ▸ Extensions ▸ FCPCaption">Final Cut Pro에서: 윈도우 ▸ 확장 프로그램 ▸ FCPCaption</strong>
+          <p data-en="The first transcription downloads the model and compiles it for the Neural Engine — several minutes, once. Everything after that starts instantly.">첫 전사에서 모델을 내려받고 Neural Engine용으로 컴파일합니다 — 몇 분 걸리고, 한 번뿐입니다. 그 뒤로는 바로 시작합니다.</p></li>
+      </ol>
+      <p class="sub" data-en="Prefer the command line? The same pipeline runs headless — see the README.">커맨드라인이 편하다면 같은 파이프라인을 그대로 돌릴 수 있습니다 — README를 참고하세요.</p>
     </div>
   </section>
 </main>
@@ -305,7 +312,7 @@ swift run -c release fcpcaption-cli /path/to/clip.mov --language ko</code></pre>
     ko: {
       loading: ["최신 릴리스 확인 중…", "불러오는 중입니다"],
       noneTitle: "아직 배포된 빌드가 없습니다",
-      noneMeta: "M5에서 서명·공증된 dmg를 올릴 예정입니다. 그때까지는 소스에서 빌드해 주세요.",
+      noneMeta: "GitHub Releases 페이지에서 확인하거나 소스에서 빌드해 주세요.",
       noneBtn: "GitHub에서 보기",
       failTitle: "릴리스 정보를 불러오지 못했습니다",
       failMeta: "GitHub Releases 페이지에서 직접 확인해 주세요.",
@@ -316,7 +323,7 @@ swift run -c release fcpcaption-cli /path/to/clip.mov --language ko</code></pre>
     en: {
       loading: ["Checking the latest release…", "Loading"],
       noneTitle: "No build published yet",
-      noneMeta: "A signed, notarized dmg ships with M5. Until then, build it from source.",
+      noneMeta: "Check the GitHub Releases page, or build it from source.",
       noneBtn: "View on GitHub",
       failTitle: "Couldn't load release information",
       failMeta: "Check the GitHub Releases page directly.",
