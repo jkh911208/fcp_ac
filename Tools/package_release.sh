@@ -9,6 +9,12 @@
 #   FCPCAPTION_CODE_SIGN_IDENTITY  usually "Developer ID Application: NAME (TEAM)"
 #   FCPCAPTION_NOTARY_PROFILE      a keychain profile made with `xcrun notarytool store-credentials`
 #
+# Pass a version to publish the result to GitHub Releases, which is only file hosting here — the
+# build happens on this Mac because Apple's Workflow Extensions SDK lives here and cannot be
+# installed on a hosted runner:
+#
+#   Tools/package_release.sh v0.1.0
+#
 # Without the notary profile it still builds and signs, and says what it skipped — a build that
 # quietly skips notarization is a build that fails on someone else's Mac with a Gatekeeper dialog.
 
@@ -35,12 +41,18 @@ xcodebuild -project FCPCaption.xcodeproj -scheme FCPCaption -configuration Relea
 
 # The appex is signed before the app that contains it: signing the outer bundle first would be
 # invalidated by touching the inner one afterwards.
+# On CI the identity lives in a throwaway keychain, not the login one.
+KEYCHAIN_ARGS=()
+if [ -n "${FCPCAPTION_KEYCHAIN:-}" ]; then
+  KEYCHAIN_ARGS=(--keychain "$FCPCAPTION_KEYCHAIN")
+fi
+
 echo "==> Signing"
-codesign --force --timestamp --options runtime \
+codesign --force --timestamp --options runtime "${KEYCHAIN_ARGS[@]}" \
   --entitlements FCPCaptionExtension/FCPCaptionExtension.entitlements \
   --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" \
   "$APP/Contents/PlugIns/FCPCaptionExtension.appex"
-codesign --force --timestamp --options runtime \
+codesign --force --timestamp --options runtime "${KEYCHAIN_ARGS[@]}" \
   --entitlements FCPCaption/FCPCaption.entitlements \
   --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" \
   "$APP"
@@ -59,7 +71,7 @@ mkdir -p "$STAGE"
 cp -R "$APP" "$STAGE/"
 ln -s /Applications "$STAGE/Applications"
 hdiutil create -volname "FCPCaption" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-codesign --force --timestamp --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" "$DMG"
+codesign --force --timestamp "${KEYCHAIN_ARGS[@]}" --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" "$DMG"
 
 if [ -z "${FCPCAPTION_NOTARY_PROFILE:-}" ]; then
   echo "!! FCPCAPTION_NOTARY_PROFILE is not set — the dmg is signed but NOT notarized."
@@ -68,12 +80,29 @@ if [ -z "${FCPCAPTION_NOTARY_PROFILE:-}" ]; then
 fi
 
 echo "==> Notarizing (this takes a few minutes)"
-xcrun notarytool submit "$DMG" --keychain-profile "$FCPCAPTION_NOTARY_PROFILE" --wait
+xcrun notarytool submit "$DMG" --keychain-profile "$FCPCAPTION_NOTARY_PROFILE" \
+  ${FCPCAPTION_KEYCHAIN:+--keychain "$FCPCAPTION_KEYCHAIN"} --wait
 xcrun stapler staple "$DMG"
 
 echo "==> Checking the result the way Gatekeeper will"
 spctl --assess --type open --context context:primary-signature -vv "$DMG"
 xcrun stapler validate "$DMG"
 
+VERSION="${1:-}"
+if [ -z "$VERSION" ]; then
+  echo
+  echo "Done: $DMG"
+  echo "To publish it:  Tools/package_release.sh $VERSION   (or: gh release create <tag> $DMG)"
+  exit 0
+fi
+
+echo "==> Publishing $VERSION"
+# The asset name is load-bearing: the website links releases/latest/download/FCPCaption.dmg.
+if gh release view "$VERSION" >/dev/null 2>&1; then
+  gh release upload "$VERSION" "$DMG" --clobber
+else
+  gh release create "$VERSION" "$DMG" --title "FCPCaption ${VERSION#v}" --generate-notes
+fi
+
 echo
-echo "Done: $DMG"
+echo "Published: $(gh release view "$VERSION" --json url --jq .url)"

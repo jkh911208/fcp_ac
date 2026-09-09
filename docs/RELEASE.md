@@ -58,14 +58,27 @@ extension builds, installs, and simply never appears in Final Cut Pro.
 
 ## Publishing
 
+Pass the version and the script does it:
+
 ```bash
-gh release create v0.1.0 build/FCPCaption.dmg \
-  --title "FCPCaption 0.1.0" --notes-file <(cat)
+Tools/package_release.sh v0.1.0
 ```
 
 The asset must stay named `FCPCaption.dmg`: the site links
 `releases/latest/download/FCPCaption.dmg` as its fallback, and reads the real asset name from the
 API for the button label.
+
+## Why this is not a GitHub Action
+
+Because it cannot be, on a hosted runner. The extension links Apple's **Workflow Extensions SDK**
+from `/Library/Developer/SDKs`, which is a signed-in download from Apple: it is not present on
+GitHub's macOS images and it is not ours to commit here. So the build happens on a Mac that has
+it, and GitHub Releases is used as file hosting.
+
+A self-hosted runner on this Mac would automate the tag → release path, and would need the
+Developer ID certificate and notarization credentials as repository secrets. That is a real option
+if releases ever become frequent enough to be a chore; it is not worth the secret handling for a
+release every few weeks.
 
 ## Verifying on another Mac
 
