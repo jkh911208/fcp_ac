@@ -85,3 +85,30 @@ struct FCPTimeTests {
         #expect(time.seconds == -0.5)
     }
 }
+
+/// The local model list. These identifiers are folder names in a Hugging Face repository, so a
+/// typo is a download that 404s at the worst moment — on a user's first run.
+struct WhisperModelTests {
+    @Test func exactlyTwoModelsAreOffered() {
+        #expect(WhisperModel.allCases.map(\.displayName) == ["large-v3", "large-v3-turbo"])
+    }
+
+    @Test func turboIsTheDefaultAndTheSmallerDownload() {
+        #expect(WhisperModel.default == .largeV3Turbo)
+        #expect(WhisperModel.largeV3Turbo.downloadSizeMB < WhisperModel.largeV3.downloadSizeMB)
+    }
+
+    @Test func identifiersAreTheMacOptimisedVariants() {
+        // The `_turbo` folder suffix is WhisperKit's macOS compute optimisation of the same
+        // weights, not a different model — both entries want it.
+        #expect(WhisperModel.largeV3.identifier == "openai_whisper-large-v3_turbo")
+        #expect(WhisperModel.largeV3Turbo.identifier == "openai_whisper-large-v3-v20240930_turbo")
+        #expect(WhisperModel.allCases.allSatisfy { $0.identifier.hasSuffix("_turbo") })
+    }
+
+    @Test func modelsLiveInApplicationSupport() {
+        // percentEncoded: false — the path has a space in it, and the encoded form is not a path.
+        #expect(WhisperModel.defaultDirectory.path(percentEncoded: false)
+            .hasSuffix("Application Support/FCPCaption/models/"))
+    }
+}

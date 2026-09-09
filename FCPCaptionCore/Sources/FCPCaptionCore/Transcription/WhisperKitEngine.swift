@@ -20,7 +20,7 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
     /// ~600MB, later runs skip straight past it.
     private static let preparationShare = 0.15
 
-    public init(model: WhisperModel = .largeV3Turbo, modelDirectory: URL = WhisperModel.defaultDirectory) {
+    public init(model: WhisperModel = .default, modelDirectory: URL = WhisperModel.defaultDirectory) {
         self.model = model
         self.modelDirectory = modelDirectory
     }

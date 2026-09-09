@@ -131,7 +131,11 @@ click path, is in `docs/XCODE_SETUP.md`.
   - `CaptionBuilder` — the §8 Korean rules. 23 tests, all passing, run in ~1ms.
   - `SRTWriter`, `TranscriptWord`/`TranscriptSegment`/`Caption`, `TranscriptionEngine` protocol.
   - `WhisperKitEngine` — model download into `~/Library/Application Support/FCPCaption/models`,
-    progress, cancellation. Model identifiers verified against the Hugging Face repo listing.
+    progress, cancellation. **Two local models, matching what the cloud engine lists:**
+    `large-v3-turbo` (1.5 GB, the default — WhisperKit's own macOS recommendation) and `large-v3`
+    (3.0 GB). Both use WhisperKit's `_turbo` folder, which is a macOS compute optimisation of the
+    same weights rather than a different model. Identifiers verified against the repository, and
+    both folder URLs answer 200.
 - **`fcpcaption-cli`** — the M0 spike tool, and the fastest way to re-check quality later.
 - **Landing page** — live at <https://jkh911208.github.io/fcp_ac/>, deployed from `site/` by
   `pages.yml`. Bilingual (KO default), reads the latest release from the GitHub API and links its

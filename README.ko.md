@@ -69,7 +69,7 @@ cd FCPCaptionCore && swift build -c release
 .build/release/fcpcaption-cli clip.mov --language ko      # -> clip.srt
 ```
 
-옵션: `--model large-v3-turbo|small`, `--language ko|auto`, `--output 경로`.
+옵션: `--model large-v3-turbo|large-v3`, `--language ko|auto`, `--output 경로`.
 
 ## 설치
 

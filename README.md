@@ -69,7 +69,7 @@ Point it at a media file instead and you get a plain `.srt`:
 .build/release/fcpcaption-cli clip.mov --language ko      # -> clip.srt
 ```
 
-Options: `--model large-v3-turbo|small`, `--language ko|auto`, `--output PATH`.
+Options: `--model large-v3-turbo|large-v3`, `--language ko|auto`, `--output PATH`.
 
 ## Install
 

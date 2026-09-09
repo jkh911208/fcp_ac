@@ -10,11 +10,11 @@ import FCPCaptionCore
 //   fcpcaption-cli <audio/video>   -> a plain .srt, which is how transcription quality gets
 //                                     checked without FCP in the way
 //
-// Options: [--model large-v3-turbo|small] [--language ko|auto] [--output PATH]
+// Options: [--model large-v3-turbo|large-v3] [--language ko|auto] [--output PATH]
 
 struct Arguments {
     var input: URL
-    var model: WhisperModel = .largeV3Turbo
+    var model: WhisperModel = .default
     var language: String? = "ko"
     var output: URL?
 
@@ -33,7 +33,7 @@ struct Arguments {
 
     static func parse(_ raw: [String]) throws -> Arguments {
         var positional: [String] = []
-        var model = WhisperModel.largeV3Turbo
+        var model = WhisperModel.default
         var language: String? = "ko"
         var output: URL?
 
@@ -100,7 +100,7 @@ enum CLIError: LocalizedError {
           <파일>이 .fcpxml이면  → 자막을 넣은 .fcpxml (FCP에서 File ▸ Import ▸ XML…)
           <파일>이 영상/오디오면 → .srt
 
-          -m, --model     large-v3-turbo (기본) | small
+          -m, --model     large-v3-turbo (기본, 1.5GB) | large-v3 (3.0GB)
           -l, --language  ko (기본) | auto | 그 외 언어 코드
           -o, --output    저장 경로 (기본: 입력 파일과 같은 위치)
         """
