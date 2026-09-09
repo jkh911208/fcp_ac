@@ -69,10 +69,11 @@ func run() {
     // part being reviewed.
     for (name, state) in states {
         render(
-            PanelView(model: model(state), onOpenInFinalCut: { _ in }, onSaveCaptionFile: { _, _ in }),
+            PanelView(model: model(state), onOpenInFinalCut: { _ in }, onSaveCaptionFile: { _, _ in },
+                      onReportProblem: { _ in }),
             to: directory.appending(path: "panel-\(name)-\(appearance == .darkAqua ? "dark" : "light").png"),
             appearance: appearance,
-            height: 1500
+            height: 2400
         )
     }
 }

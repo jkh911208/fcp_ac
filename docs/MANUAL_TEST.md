@@ -59,6 +59,15 @@ cannot read the project at all drops perfectly.
 - [ ] Changing one and closing the panel keeps the change on reopen
 - [ ] During a run, the settings are visibly dimmed and cannot be changed
 
+## 2c. Reporting a problem
+
+- [ ] **문제 신고** at the bottom of the panel offers a save panel, writes a zip, and reveals it
+- [ ] The zip holds `report.md`, `log.txt` and `host-trace.txt`
+- [ ] `report.md` names this Mac, this macOS build, and **Final Cut Pro's version**
+- [ ] It contains no name, serial number, hostname or file path
+- [ ] A GitHub issue opens with the environment table already in the body
+- [ ] After a failure, **이 오류 신고하기** puts the error message into the report
+
 ## 3. Transcription — 1 minute
 
 - [ ] Progress advances through 오디오 추출 → 음성을 전사하는 중, and never goes backwards

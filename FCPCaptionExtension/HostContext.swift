@@ -31,6 +31,9 @@ enum HostContext {
     /// `os_log` from this extension does not reach `log show` — several attempts produced nothing
     /// at all — and a silent failure here looks exactly like a working feature until someone
     /// checks the library. A file in our own container is crude and it is legible.
+    /// Exposed so a bug report can attach it — it is the only record of what the host answered.
+    static var traceFileURL: URL? { traceURL }
+
     private static var traceURL: URL? {
         try? FileManager.default
             .url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)

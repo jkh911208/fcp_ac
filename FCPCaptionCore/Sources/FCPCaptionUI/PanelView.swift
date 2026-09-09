@@ -10,15 +10,20 @@ public struct PanelView: View {
     @Bindable var model: PanelModel
     var onOpenInFinalCut: (URL) -> Void
     var onSaveCaptionFile: ((String, String) -> Void)?
+    /// Collects a diagnostics zip and opens a prefilled issue. The string is whatever context the
+    /// panel already has — a failure message, or empty when the user starts the report themselves.
+    var onReportProblem: ((String) -> Void)?
 
     public init(
         model: PanelModel,
         onOpenInFinalCut: @escaping (URL) -> Void,
-        onSaveCaptionFile: ((String, String) -> Void)? = nil
+        onSaveCaptionFile: ((String, String) -> Void)? = nil,
+        onReportProblem: ((String) -> Void)? = nil
     ) {
         self.model = model
         self.onOpenInFinalCut = onOpenInFinalCut
         self.onSaveCaptionFile = onSaveCaptionFile
+        self.onReportProblem = onReportProblem
     }
 
     public var body: some View {
@@ -35,6 +40,10 @@ public struct PanelView: View {
                 SettingsView(settings: $model.settings)
                     .disabled(isWorking)
                     .opacity(isWorking ? 0.4 : 1)
+                if onReportProblem != nil {
+                    Divider()
+                    reportRow
+                }
             }
             .padding(16)
         }
@@ -215,7 +224,28 @@ public struct PanelView: View {
                 wideButton("다시 시도", prominent: true) { model.retry() }
             }
             wideButton("처음으로") { model.reset() }
+            // Offered here with the error already in hand, so a report costs one click at the
+            // moment the user has something to report.
+            if let onReportProblem {
+                wideButton("이 오류 신고하기") { onReportProblem(message) }
+            }
         }
+    }
+
+    private var reportRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Button {
+                onReportProblem?("")
+            } label: {
+                Label("문제 신고", systemImage: "ladybug")
+            }
+            .controlSize(.small)
+            Text("이 Mac의 사양과 Final Cut Pro 버전, 최근 로그를 zip으로 모읍니다.\n올리기 전에 내용을 직접 확인하실 수 있고, 자동으로 전송되는 것은 없습니다.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var isWorking: Bool {

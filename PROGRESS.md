@@ -319,14 +319,27 @@ model radio group says the same thing, in place.
 Rendered before/after first, per `CLAUDE.md`. `swift run PanelPreview <dir> [light|dark]` writes a
 PNG per state and is how any further change here should be reviewed.
 
+### Bug reports carry their own evidence (2026-09-09)
+
+**문제 신고** in the panel — and **이 오류 신고하기** on a failure, with the error already in hand —
+collects a zip and opens a prefilled GitHub issue. What goes in: Mac model, CPU, core split, RAM,
+macOS version *and build* (the ANE cache is keyed to the build), FCPCaption's version, what the
+ProExtension host says it is, this process's own `OSLogStore` entries, and `host-trace.txt`.
+
+Everything is read in-process — `sysctlbyname`, not a spawned `sysctl`, because a sandboxed
+extension cannot spawn anything — and the zip comes from `NSFileCoordinator(.forUploading)`, which
+is how a sandboxed app makes an archive without a `zip` binary.
+
+**Nothing is uploaded.** The user saves a file they can open and read, Finder reveals it, and an
+issue opens for them to edit before posting. A token shipped inside the app to upload on their
+behalf is a token anyone can extract from the app, and this project promises no server and no
+telemetry — so the person who decides what leaves the machine is the person whose machine it is.
+A test pins the report's rows by name, so adding a serial number or a user name fails the build
+rather than shipping quietly in everyone's reports.
+
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.
-- **A diagnostics bundle for bug reports** — CPU, Mac model, macOS build, Final Cut Pro version
-  (already available from `FCPXHost.versionString`), our own `OSLogStore` entries and the host
-  trace, zipped via `NSFileCoordinator(.forUploading)` and attached by hand to a prefilled GitHub
-  issue. **Not** auto-uploaded: this project promises no server and no telemetry, and an API token
-  shipped inside the app is a token anyone can extract.
 - **Transcription results are lost if the panel closes** or the extension is reinstalled. Nothing
   is persisted between a run and the save. On a 20-minute clip that is 20 minutes thrown away.
   This is the first thing worth fixing.

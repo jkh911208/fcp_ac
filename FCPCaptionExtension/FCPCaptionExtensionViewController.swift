@@ -1,5 +1,6 @@
 import Cocoa
 import FCPCaptionCore
+import UniformTypeIdentifiers
 import FCPCaptionUI
 import SwiftUI
 import os
@@ -48,6 +49,9 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 },
                 onSaveCaptionFile: { contents, baseName in
                     MainActor.assumeIsolated { Self.saveCaptionFile(contents, baseName: baseName) }
+                },
+                onReportProblem: { note in
+                    MainActor.assumeIsolated { Self.reportProblem(note: note) }
                 }
             ))
             panel.translatesAutoresizingMaskIntoConstraints = false
@@ -138,6 +142,51 @@ final class FCPCaptionExtensionViewController: NSViewController {
             Self.log.error("caption file save failed: \(error.localizedDescription, privacy: .public)")
             NSAlert(error: error).runModal()
         }
+    }
+
+    /// Collects a diagnostics zip, lets the user save it, and opens a prefilled issue.
+    ///
+    /// Nothing is sent anywhere by this app. The user saves a file they can open and read, and
+    /// then attaches it themselves to an issue they can edit before posting — which is the only
+    /// shape a bug report can take in something that promises no server and no telemetry.
+    @MainActor
+    private static func reportProblem(note: String) {
+        let profile = SystemProfile.current(host: hostDescription())
+        let contents = DiagnosticsBundle.Contents(
+            profile: profile,
+            note: note,
+            attachments: [HostContext.traceFileURL].compactMap { $0 }
+        )
+
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "FCPCaption-진단"
+        panel.allowedContentTypes = [.zip]
+        panel.canCreateDirectories = true
+        panel.message = "저장한 뒤 열리는 GitHub 페이지에 이 파일을 첨부해 주세요. 내용은 저장 후 직접 확인하실 수 있습니다."
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+
+        do {
+            try DiagnosticsBundle.write(contents, to: url)
+            Self.log.notice("diagnostics written")
+        } catch {
+            Self.log.error("diagnostics failed: \(error.localizedDescription, privacy: .public)")
+            NSAlert(error: error).runModal()
+            return
+        }
+
+        // Shown in Finder rather than silently saved: the user is about to upload it, and being
+        // told what is in it only helps if they can find it.
+        NSWorkspace.shared.activateFileViewerSelecting([url])
+        if let issue = DiagnosticsBundle.issueURL(contents: contents) {
+            NSWorkspace.shared.open(issue)
+        }
+    }
+
+    /// What the host says it is, for the report. Nil outside Final Cut Pro, which is worth seeing.
+    @MainActor
+    private static func hostDescription() -> String? {
+        guard let host = ProExtensionHostSingleton() as? FCPXHost else { return nil }
+        return "\(host.name) \(host.versionString)"
     }
 
     /// Runs `work` on the main thread, synchronously, wherever it is called from.
