@@ -26,8 +26,15 @@ final class FCPCaptionExtensionViewController: NSViewController {
 
             let dropView = CaptionDropView(frame: NSRect(x: 0, y: 0, width: 340, height: 420))
             dropView.onDrop = { [weak model] data in
-                MainActor.assumeIsolated { model?.receive(data) }
+                MainActor.assumeIsolated {
+                    // Asked here because Final Cut Pro is frontmost during a drag; by the time the
+                    // user presses the button the panel has focus and the host reports no active
+                    // sequence at all.
+                    HostContext.refresh()
+                    model?.receive(data)
+                }
             }
+            dropView.onDragEntered = { HostContext.refresh() }
 
             let panel = NSHostingView(rootView: PanelView(
                 model: model,
@@ -51,8 +58,19 @@ final class FCPCaptionExtensionViewController: NSViewController {
         }
     }
 
+    /// Reopening the panel does not restart the extension, so `viewDidLoad` runs once per process
+    /// and nothing after it would have asked again. Asking whenever the panel appears — and once
+    /// more a moment later, since Final Cut Pro may not have an active sequence the instant its
+    /// window comes forward — is what actually covers a reopen.
+    override func viewDidAppear() {
+        super.viewDidAppear()
+        HostContext.refresh()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { HostContext.refresh() }
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
+        HostContext.refresh()
         if let host = ProExtensionHostSingleton() as? FCPXHost {
             Self.log.notice("host: \(host.name, privacy: .public) \(host.versionString, privacy: .public)")
         } else {

@@ -189,7 +189,7 @@ public struct PanelView: View {
                 wideButton("Final Cut Pro로 보내기") { onOpenInFinalCut(finished.output) }
                 Text(finished.keepsProject
                      ? "지금 프로젝트를 갱신합니다. 임포트 창에서 **Replace**를 누르세요."
-                     : "프로젝트 사본이 라이브러리에 새로 생깁니다.")
+                     : "프로젝트 사본이 라이브러리에 새로 생깁니다. 지금 프로젝트를 그대로 쓰려면 시스템 설정 ▸ 개인정보 보호 및 보안 ▸ 자동화에서 FCPCaption이 Final Cut Pro를 제어하도록 허용해 주세요.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -107,11 +107,15 @@ public struct FCPXMLWriter: Sendable {
         var effectID: String?
         if form.writesTitles { effectID = try titleEffectID(in: root) }
 
-        // A title's times are checked against the **clip's own** frame rate, not the sequence's.
-        // This clip conforms 60p into a 59.94 timeline, and Final Cut Pro's own Subtitle title in
-        // the reference export sits at 31/20s — 93 frames at 60, and not a whole frame at 59.94.
-        // Using the sequence grid here earns "The item is not on an edit frame boundary" for every
-        // title. Captions, oddly, are validated against the sequence grid; FCP writes them there.
+        // A title's attributes are checked against **different grids**, which the reference
+        // export states plainly for a clip conforming 60p into a 59.94 timeline:
+        //
+        //     offset="31/20s"            93 frames at 60      · 92.907 at 59.94
+        //     duration="300300/60000s"   300.3 frames at 60   · 300 at 59.94
+        //
+        // So the position is in the clip's own time base and the length is in the sequence's.
+        // Aligning both to one grid earns "The item is not on an edit frame boundary" from the
+        // importer — first for every offset, then for every duration.
         let titleGrid = clip.assetFrameDuration ?? frameDuration
         let titlePlacements = titleGrid == frameDuration
             ? free
@@ -137,10 +141,14 @@ public struct FCPXMLWriter: Sendable {
             for placement in titlePlacements {
                 let styleID = "ts\(nextStyleID)"
                 nextStyleID += 1
+                // Length on the sequence grid, position on the clip's — see above.
+                var duration = (placement.end - placement.start)
+                    .aligned(to: frameDuration, rounding: .nearest)
+                if duration.numerator <= 0 { duration = frameDuration }
                 insert(titleElement(placement.caption,
-                                    start: placement.start,
-                                    duration: placement.end - placement.start,
-                                    frameDuration: titleGrid,
+                                    offset: placement.start,
+                                    duration: duration,
+                                    sequenceFrameDuration: frameDuration,
                                     styleID: styleID,
                                     lane: titleLane,
                                     effectID: effectID),
@@ -368,9 +376,9 @@ public struct FCPXMLWriter: Sendable {
 
     private func titleElement(
         _ caption: Caption,
-        start: FCPTime,
+        offset: FCPTime,
         duration: FCPTime,
-        frameDuration: FCPTime,
+        sequenceFrameDuration: FCPTime,
         styleID: String,
         lane: Int,
         effectID: String
@@ -379,12 +387,11 @@ public struct FCPXMLWriter: Sendable {
         element.setOrderedAttributes([
             ("ref", effectID),
             ("lane", String(lane)),
-            ("offset", start.description),
+            ("offset", offset.description),
             ("name", caption.lines.first ?? caption.text),
-            // FCP writes a title's internal start as exactly one hour of timecode — 216000 frames
-            // in the reference export, where a caption's was 215784. Two conventions for the same
-            // idea, and each format wants its own.
-            ("start", FCPTime(216_000 * frameDuration.numerator, frameDuration.denominator).description),
+            // One hour of timecode on the sequence grid: the reference export writes
+            // 216216000/60000s, which is exactly 216000 frames at 59.94.
+            ("start", FCPTime(216_000 * sequenceFrameDuration.numerator, sequenceFrameDuration.denominator).description),
             ("duration", duration.description),
         ])
 

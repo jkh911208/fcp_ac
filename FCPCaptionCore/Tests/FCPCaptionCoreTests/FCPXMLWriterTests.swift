@@ -632,7 +632,9 @@ struct FCPXMLWriterFrameGridTests {
             }
     }
 
-    @Test func titlesLandOnTheClipsOwnGrid() throws {
+    /// The reference export is the specification here: `offset="31/20s"` is a whole frame only at
+    /// the clip's 60, and `duration="300300/60000s"` only at the sequence's 59.94.
+    @Test func titleOffsetsUseTheClipGridAndDurationsTheSequenceGrid() throws {
         let (data, clip) = try conformedClip()
         let written = try FCPXMLWriter(form: .title).addingCaptions([
             Caption(lines: ["하나"], start: 1.02, end: 3.04),
@@ -641,11 +643,37 @@ struct FCPXMLWriterFrameGridTests {
         let xml = try XMLDocument(data: written)
 
         let clipGrid = FCPTime(10, 600)
-        for time in try times(xml, "title") {
-            let frames = Double(time.numerator * clipGrid.denominator)
-                / Double(time.denominator * clipGrid.numerator)
+        let sequenceGrid = FCPTime(1001, 60000)
+        func wholeFrames(_ time: FCPTime, on grid: FCPTime) -> Bool {
+            let frames = Double(time.numerator * grid.denominator) / Double(time.denominator * grid.numerator)
+            return abs(frames - frames.rounded()) < 0.0001
+        }
+
+        for title in try xml.nodes(forXPath: "//title").compactMap({ $0 as? XMLElement }) {
+            let offset = try FCPTime.parse(#require(title.attribute(forName: "offset")?.stringValue))
+            let duration = try FCPTime.parse(#require(title.attribute(forName: "duration")?.stringValue))
+            let start = try FCPTime.parse(#require(title.attribute(forName: "start")?.stringValue))
+            #expect(wholeFrames(offset, on: clipGrid), "offset \(offset) is not a whole clip frame")
+            #expect(wholeFrames(duration, on: sequenceGrid), "duration \(duration) is not a whole sequence frame")
+            #expect(wholeFrames(start, on: sequenceGrid), "start \(start) is not a whole sequence frame")
+        }
+    }
+
+    @Test func titleOffsetsLandOnTheClipsOwnGrid() throws {
+        let (data, clip) = try conformedClip()
+        let written = try FCPXMLWriter(form: .title).addingCaptions([
+            Caption(lines: ["하나"], start: 1.02, end: 3.04),
+            Caption(lines: ["둘"], start: 4.55, end: 6.1),
+        ], to: clip, inDocument: data)
+        let xml = try XMLDocument(data: written)
+
+        let clipGrid = FCPTime(10, 600)
+        for title in try xml.nodes(forXPath: "//title").compactMap({ $0 as? XMLElement }) {
+            let offset = try FCPTime.parse(#require(title.attribute(forName: "offset")?.stringValue))
+            let frames = Double(offset.numerator * clipGrid.denominator)
+                / Double(offset.denominator * clipGrid.numerator)
             #expect(abs(frames - frames.rounded()) < 0.0001,
-                    "\(time) is not a whole frame at the clip's rate")
+                    "\(offset) is not a whole frame at the clip's rate")
         }
     }
 
@@ -676,9 +704,10 @@ struct FCPXMLWriterFrameGridTests {
         #expect(try xml.nodes(forXPath: "//title").count == 1)
 
         let clipGrid = FCPTime(10, 600)
-        for time in try times(xml, "title") {
-            let frames = Double(time.numerator * clipGrid.denominator)
-                / Double(time.denominator * clipGrid.numerator)
+        for title in try xml.nodes(forXPath: "//title").compactMap({ $0 as? XMLElement }) {
+            let offset = try FCPTime.parse(#require(title.attribute(forName: "offset")?.stringValue))
+            let frames = Double(offset.numerator * clipGrid.denominator)
+                / Double(offset.denominator * clipGrid.numerator)
             #expect(abs(frames - frames.rounded()) < 0.0001)
         }
     }

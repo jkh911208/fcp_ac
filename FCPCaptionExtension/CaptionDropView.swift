@@ -12,6 +12,8 @@ final class CaptionDropView: NSView {
     private static let log = Logger(subsystem: "com.jkh911208.FCPCaption", category: "drop")
 
     var onDrop: ((Data) -> Void)?
+    /// Fired as a drag arrives — the moment Final Cut Pro is definitely frontmost.
+    var onDragEntered: (() -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -46,6 +48,7 @@ final class CaptionDropView: NSView {
         // actually sends, and it is a fact worth writing down rather than guessing at.
         let types = sender.draggingPasteboard.types?.map(\.rawValue).joined(separator: ", ") ?? "none"
         Self.log.notice("drag entered with types: \(types, privacy: .public)")
+        onDragEntered?()
         return .copy
     }
 
