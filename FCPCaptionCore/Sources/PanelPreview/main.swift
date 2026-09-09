@@ -53,7 +53,7 @@ func run() {
 
     let states: [(String, PanelModel.State)] = [
         ("1-waiting", .waiting),
-        ("2-ready", .ready(clip)),
+        ("2-ready", .ready(clip, hasTimeline: true)),
         ("3-working", .working(stage: .transcribing, fraction: 0.42)),
         ("4-finished", .finished(.init(captionCount: 37, clipName: clip.name,
                                        output: URL(filePath: "/tmp/out.fcpxml")))),

@@ -98,29 +98,49 @@ lane** — separate lanes did not save us. The writer now trims its captions cle
 caption in the same language, skips one that would have to be split around theirs, never alters
 what the editor wrote, and reports how many it skipped so a missing caption is never silent.
 
-### The local model default, measured (2026-09-09)
+### Transcription is not repeatable, and that is the right trade (2026-09-09)
 
-Both models, same 18m20s Korean clip, model already downloaded:
+Running the same 18-minute clip twice through the same model produced transcripts only **53.9%**
+alike — a bigger gap than between large-v3 and turbo (60.2%). **Every quality comparison made
+before this was reading noise, including one that nearly changed the default model.**
+
+The cause, isolated on a 3-minute clip with each setting run twice:
+
+| Setting | Time | Same output twice? | Captions |
+|---|---|---|---|
+| 16 workers, 5 retries (WhisperKit default) | 22.3s / 23.0s | no — 91.8% alike | 47 / 41 |
+| 1 worker, 5 retries | 18.9s / 21.2s | no — 82.2% alike | 32 / 46 |
+| 16 workers, **0 retries** | 14.8s / 14.0s | **yes — byte-identical** | 32 / 32 |
+
+It is the **temperature fallback**, not concurrency: above zero temperature the decoder samples,
+and each window prompts the next, so one sampled token propagates. Fewer workers made it worse.
+WhisperKit samples with `Float.random(in: 0..<1)` and exposes no seed, so there is no way to have
+both without forking the dependency.
+
+**Turning the retries off is not the answer.** In that clip the two settings agreed exactly for
+117 seconds, and then the no-retry run went almost silent for the remaining minute — a third of
+the clip lost, which is also why it looked faster. The retries recover a window whose decode has
+collapsed; without them the collapse is permanent.
+
+So the default keeps them, and both parameters are exposed in Settings with the trade-off written
+out. A caption that shifts between runs is a nuisance; a minute of missing dialogue is a broken
+subtitle track.
+
+### Local model speed, measured on 18m20s (2026-09-09)
+
+Nothing else running, model already downloaded and compiled:
 
 | | large-v3 | large-v3-turbo |
 |---|---|---|
-| Time | 398s (0.36× real time) | **120s (0.11×)** |
-| Words → captions | 1201 → 243 | 1246 → 262 |
-| A 60-minute clip | ~22 min | ~6.5 min |
+| Time | 456s (0.40× real time) | **118s (0.11×)** |
 | Download | 3.0 GB | 1.5 GB |
-| First run also | ~10 min ANE compile, 6.3 GB RAM | shorter |
+| First run also | ~10 min Neural Engine compile, 6.3 GB RAM | shorter |
 
-Their transcripts are only **60% character-similar**, and the difference has a shape: turbo catches
-more speech (whole utterances large-v3 drops), and large-v3 writes what it catches more correctly —
-`나머지` against `나무지`, `강아지` against `강 아지`, `다르나` against `다르니라`. Turbo also
-injects speaker dashes.
-
-**large-v3 stays the default.** A missed line is something an editor notices and fills in; a
-mangled word goes out on screen. Turbo remains the option for a fast first pass, described as such
-in Settings.
-
-A 24-second sample had said the opposite, and was nearly acted on. One short clip is not a
-measurement.
+**Turbo is 3.9× faster, and that number is solid.** Which of them transcribes Korean better is
+**not** something these measurements can answer — the run-to-run variance swamps the difference.
+large-v3 stays the default on the strength of the model card (turbo is large-v3 with its decoder
+pruned from 32 layers to 4, for "minor quality degradation"), not on the strength of anything
+measured here. Settling it properly would need a reference transcript and several runs per model.
 
 ### M1 — the panel, and what the SDK settled (this branch)
 

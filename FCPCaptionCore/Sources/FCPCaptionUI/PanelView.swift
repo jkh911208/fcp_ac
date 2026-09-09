@@ -33,8 +33,18 @@ public struct PanelView: View {
             dropTarget
         case .reading:
             busy("클립을 읽는 중…")
-        case let .ready(clip):
+        case let .ready(clip, hasTimeline):
             clipCard(clip)
+            if !hasTimeline {
+                // A clip dragged from the browser carries no sequence, so its captions land on the
+                // library clip — not on a timeline it has already been edited into. Saying so here
+                // is cheaper than the user discovering it after a five-minute transcription.
+                Label("클립만 받았습니다. 자막은 라이브러리 클립에 붙고, 이미 편집된 타임라인에는 나타나지 않습니다. 타임라인에 넣으려면 브라우저에서 **프로젝트**를 끌어다 놓으세요.",
+                      systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             wideButton("자막 생성", prominent: true) { model.start() }
         case let .working(stage, fraction):
             working(stage: stage, fraction: fraction)
@@ -52,7 +62,7 @@ public struct PanelView: View {
             Image(systemName: "text.bubble")
                 .font(.system(size: 30, weight: .light))
                 .foregroundStyle(.secondary)
-            Text("브라우저에서 프로젝트나 클립을\n여기로 끌어다 놓으세요")
+            Text("브라우저에서 **프로젝트**를\n여기로 끌어다 놓으세요")
                 .font(.callout)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)

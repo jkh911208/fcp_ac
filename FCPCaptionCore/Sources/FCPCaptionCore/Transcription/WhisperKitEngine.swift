@@ -8,8 +8,62 @@ import WhisperKit
 /// Thread safety: the pipeline and the cancel flag are guarded by `lock`; everything else is
 /// immutable, which is why this can be `@unchecked Sendable`.
 public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
+    /// Decoding settings, exposed because they trade reproducibility against completeness and
+    /// only the person editing knows which they want.
+    ///
+    /// Measured on a 3-minute Korean clip, each setting run twice (2026-09-09):
+    ///
+    /// | Setting | Time | Same output twice? | Captions |
+    /// |---|---|---|---|
+    /// | 16 workers, 5 retries (default) | 22.3s / 23.0s | no, 91.8% alike | 47 / 41 |
+    /// | 1 worker, 5 retries | 18.9s / 21.2s | no, 82.2% alike | 32 / 46 |
+    /// | 16 workers, **0 retries** | 14.8s / 14.0s | **yes, byte-identical** | 32 / 32 |
+    ///
+    /// The retries are what make a run unrepeatable — above zero temperature the decoder samples,
+    /// and each window prompts the next, so one sampled difference propagates. Fewer workers do
+    /// not help; they made it worse.
+    ///
+    /// **But turning the retries off loses speech.** In that same clip the first 117 seconds came
+    /// out identical either way, and then the no-retry run went almost silent for the remaining
+    /// minute — a third of the clip, gone, which is also why it looked faster. The retries exist
+    /// to recover a window whose decode has collapsed, and without them the collapse is permanent.
+    ///
+    /// So the defaults stay WhisperKit's. A caption that shifts slightly between runs is a
+    /// nuisance; a minute of missing dialogue is a broken subtitle track.
+    public struct Options: Sendable, Equatable, Codable {
+        /// Windows decoded at once. WhisperKit's macOS default is 16.
+        public var concurrentWorkerCount: Int
+        /// Retries at rising temperature when a window's decode looks degenerate.
+        ///
+        /// Set to 0 for a run that repeats exactly — at the cost of losing whatever the retries
+        /// would have recovered.
+        public var temperatureFallbackCount: Int
+
+        public init(concurrentWorkerCount: Int = 16, temperatureFallbackCount: Int = 5) {
+            self.concurrentWorkerCount = max(1, concurrentWorkerCount)
+            self.temperatureFallbackCount = max(0, temperatureFallbackCount)
+        }
+
+        /// The default: recovers difficult passages, and does not repeat exactly.
+        public static let complete = Options()
+
+        /// Byte-identical output on every run, and it will drop speech it cannot decode cleanly.
+        public static let reproducible = Options(concurrentWorkerCount: 16, temperatureFallbackCount: 0)
+
+        /// Whether two runs with these settings produce the same text.
+        public var isReproducible: Bool { temperatureFallbackCount == 0 }
+
+        /// The line Settings shows under the toggle.
+        public var summary: String {
+            isReproducible
+                ? "매번 같은 결과가 나옵니다. 대신 알아듣기 어려운 구간을 통째로 놓칠 수 있습니다."
+                : "어려운 구간을 여러 번 시도해 살려냅니다. 대신 같은 영상을 다시 돌리면 결과가 조금 달라집니다."
+        }
+    }
+
     public let id = "whisperkit"
     public let model: WhisperModel
+    public var options: Options
 
     private let modelDirectory: URL
     private let lock = NSLock()
@@ -20,9 +74,14 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
     /// ~600MB, later runs skip straight past it.
     private static let preparationShare = 0.15
 
-    public init(model: WhisperModel = .default, modelDirectory: URL = WhisperModel.defaultDirectory) {
+    public init(
+        model: WhisperModel = .default,
+        modelDirectory: URL = WhisperModel.defaultDirectory,
+        options: Options = .init()
+    ) {
         self.model = model
         self.modelDirectory = modelDirectory
+        self.options = options
     }
 
     // MARK: - TranscriptionEngine
@@ -41,13 +100,15 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
             try checkCancellation()
 
             let windows = try await expectedWindowCount(of: audio)
-            let options = DecodingOptions(
+            let decodeOptions = DecodingOptions(
                 verbose: false,
                 task: .transcribe,
                 language: language,
+                temperatureFallbackCount: options.temperatureFallbackCount,
                 detectLanguage: language == nil,
                 skipSpecialTokens: true,
-                wordTimestamps: true
+                wordTimestamps: true,
+                concurrentWorkerCount: options.concurrentWorkerCount
             )
 
             let callback: TranscriptionCallback = { [weak self] update in
@@ -62,7 +123,7 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
             do {
                 results = try await pipeline.transcribe(
                     audioPath: audio.path(percentEncoded: false),
-                    decodeOptions: options,
+                    decodeOptions: decodeOptions,
                     callback: callback
                 )
             } catch {

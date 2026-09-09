@@ -14,7 +14,10 @@ public final class PanelModel {
         /// Nothing dropped yet. The only state that shows the drop target.
         case waiting
         case reading
-        case ready(ClipRef)
+        /// `hasTimeline` is false when the drop was a browser *clip* rather than a project: there
+        /// is no sequence in the document, so captions can only attach to the library clip and
+        /// will not appear on any timeline the clip was already edited into.
+        case ready(ClipRef, hasTimeline: Bool)
         case working(stage: CaptionPipeline.Stage, fraction: Double)
         case finished(Finished)
         case failed(message: String, canRetry: Bool)
@@ -42,6 +45,7 @@ public final class PanelModel {
 
     private var document: Data?
     private var clip: ClipRef?
+    private var hasTimeline = false
     private var task: Task<Void, Never>?
 
     private let makePipeline: @Sendable () -> CaptionPipeline
@@ -67,11 +71,12 @@ public final class PanelModel {
     public func receive(_ data: Data) {
         state = .reading
         do {
-            let (document, clips, _) = try DroppedDocument.parse(data)
+            let (document, clips, parsed) = try DroppedDocument.parse(data)
             guard let clip = clips.first else { throw CaptionPipelineError.noAudibleClip }
             self.document = document
             self.clip = clip
-            state = .ready(clip)
+            self.hasTimeline = parsed.sequence != nil
+            state = .ready(clip, hasTimeline: hasTimeline)
         } catch {
             fail(error, canRetry: false)
         }
@@ -109,7 +114,7 @@ public final class PanelModel {
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next
                 // thing a person does after cancelling is almost always run it again.
-                self.state = self.clip.map { State.ready($0) } ?? .waiting
+                self.state = self.clip.map { State.ready($0, hasTimeline: self.hasTimeline) } ?? .waiting
             } catch {
                 self.fail(error, canRetry: true)
             }

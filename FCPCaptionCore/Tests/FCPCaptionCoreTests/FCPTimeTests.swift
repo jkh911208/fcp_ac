@@ -123,3 +123,31 @@ struct WhisperModelTests {
             .hasSuffix("Application Support/FCPCaption/models/"))
     }
 }
+
+/// Decoding options. The numbers behind these defaults are measured, and recorded on `Options`.
+struct WhisperKitEngineOptionsTests {
+    @Test func theDefaultRecoversRatherThanRepeats() {
+        // Turning the retries off makes a run byte-identical — and loses a third of the speech on
+        // the clip it was measured against. Completeness wins by default.
+        #expect(WhisperKitEngine.Options.complete.temperatureFallbackCount == 5)
+        #expect(!WhisperKitEngine.Options.complete.isReproducible)
+        #expect(WhisperKitEngine.Options().temperatureFallbackCount == 5)
+    }
+
+    @Test func theReproducibleOptionTurnsOffOnlyTheRetries() {
+        let options = WhisperKitEngine.Options.reproducible
+        #expect(options.isReproducible)
+        // Fewer workers neither helped reproducibility nor speed, so they stay at the default.
+        #expect(options.concurrentWorkerCount == 16)
+    }
+
+    @Test func bothOptionsExplainTheirTradeoff() {
+        #expect(WhisperKitEngine.Options.complete.summary.contains("달라집니다"))
+        #expect(WhisperKitEngine.Options.reproducible.summary.contains("놓칠 수 있습니다"))
+    }
+
+    @Test func degenerateValuesAreClamped() {
+        #expect(WhisperKitEngine.Options(concurrentWorkerCount: 0).concurrentWorkerCount == 1)
+        #expect(WhisperKitEngine.Options(temperatureFallbackCount: -3).temperatureFallbackCount == 0)
+    }
+}

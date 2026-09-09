@@ -17,6 +17,7 @@ struct Arguments {
     var model: WhisperModel = .default
     var language: String? = "ko"
     var output: URL?
+    var engineOptions = WhisperKitEngine.Options()
 
     /// A `.fcpxml` (or the `Info.fcpxml` inside a `.fcpxmld` bundle) takes the FCP path; anything
     /// else is treated as media and produces an .srt.
@@ -36,6 +37,7 @@ struct Arguments {
         var model = WhisperModel.default
         var language: String? = "ko"
         var output: URL?
+        var engineOptions = WhisperKitEngine.Options()
 
         var index = 0
         while index < raw.count {
@@ -55,6 +57,10 @@ struct Arguments {
             case "--language", "-l":
                 let name = try value()
                 language = (name == "auto") ? nil : name
+            case "--workers":
+                engineOptions.concurrentWorkerCount = Int(try value()) ?? 16
+            case "--fallbacks":
+                engineOptions.temperatureFallbackCount = Int(try value()) ?? 5
             case "--output", "-o":
                 output = URL(filePath: try value())
             case "--help", "-h":
@@ -67,7 +73,8 @@ struct Arguments {
         }
 
         guard let first = positional.first else { throw CLIError.help }
-        return Arguments(input: URL(filePath: first), model: model, language: language, output: output)
+        return Arguments(input: URL(filePath: first), model: model, language: language,
+                         output: output, engineOptions: engineOptions)
     }
 }
 
@@ -103,6 +110,8 @@ enum CLIError: LocalizedError {
           -m, --model     large-v3 (기본, 3.0GB) | large-v3-turbo (1.5GB, 더 빠름)
           -l, --language  ko (기본) | auto | 그 외 언어 코드
           -o, --output    저장 경로 (기본: 입력 파일과 같은 위치)
+              --workers   동시 디코딩 윈도우 수 (기본 16)
+              --fallbacks 품질 미달 시 온도를 올려 재시도하는 횟수 (기본 5)
         """
     }
 }
@@ -137,7 +146,7 @@ do {
     log("모델: \(arguments.model.displayName)  언어: \(arguments.language ?? "자동 감지")")
     log("입력: \(arguments.input.lastPathComponent)")
 
-    let engine = WhisperKitEngine(model: arguments.model)
+    let engine = WhisperKitEngine(model: arguments.model, options: arguments.engineOptions)
     let started = Date()
 
     // Progress arrives from decoding threads, so the "last percent printed" counter is shared
