@@ -19,10 +19,10 @@ struct PanelModelTests {
         func transcribe(
             audio: URL,
             language: String?,
-            progress: @escaping @Sendable (Double) -> Void
+            progress: @escaping @Sendable (TranscriptionPhase, Double) -> Void
         ) async throws -> [TranscriptWord] {
             if delay > .zero { try await Task.sleep(for: delay) }
-            progress(1)
+            progress(.transcribing, 1)
             return words
         }
         func cancel() {}

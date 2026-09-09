@@ -28,12 +28,12 @@ struct CaptionPipelineTests {
         func transcribe(
             audio: URL,
             language: String?,
-            progress: @escaping @Sendable (Double) -> Void
+            progress: @escaping @Sendable (TranscriptionPhase, Double) -> Void
         ) async throws -> [TranscriptWord] {
             let seconds = (try? AVAudioFile(forReading: audio)).map { Double($0.length) / $0.fileFormat.sampleRate }
             lock.withLock { _audio = audio; _language = language; _audioSeconds = seconds }
-            progress(0.5)
-            progress(1)
+            progress(.transcribing, 0.5)
+            progress(.transcribing, 1)
             return words
         }
 
@@ -148,7 +148,7 @@ struct CaptionPipelineTests {
         }
         let trace = Trace()
         _ = try await CaptionPipeline(engine: StubEngine(words: words))
-            .run(document: data) { _, fraction in trace.add(fraction) }
+            .run(document: data) { report in trace.add(report.fraction) }
 
         let values = trace.all
         #expect(values.last == 1)
@@ -255,7 +255,7 @@ extension CaptionPipelineTests {
             private let lock = NSLock()
             private var calls = 0
             init(words: [TranscriptWord]) { self.words = words }
-            func transcribe(audio: URL, language: String?, progress: @escaping @Sendable (Double) -> Void) async throws -> [TranscriptWord] {
+            func transcribe(audio: URL, language: String?, progress: @escaping @Sendable (TranscriptionPhase, Double) -> Void) async throws -> [TranscriptWord] {
                 let first = lock.withLock { calls += 1; return calls == 1 }
                 return first ? words : []
             }
@@ -266,5 +266,54 @@ extension CaptionPipelineTests {
         #expect(result.clips.count == 2)
         #expect(!result.clips[0].captions.isEmpty)
         #expect(result.clips[1].captions.isEmpty)
+    }
+}
+
+
+/// What the panel is told while it waits. A model download and a CoreML load are different kinds
+/// of waiting, and the panel can only say so if the pipeline distinguishes them.
+struct CaptionPipelineReportTests {
+    @Test func aDownloadReportsBytesAndSpeedAndSaysItIsOnceOnly() {
+        let report = CaptionPipeline.report(
+            for: .downloadingModel(downloaded: 1_181_116_006, total: 3_195_455_570, bytesPerSecond: 44_040_192),
+            fraction: 0
+        )
+        #expect(report.stage == .downloadingModel)
+        #expect(abs(report.fraction - 0.37) < 0.02)
+        let detail = try! #require(report.detail)
+        #expect(detail.contains("1.1 GB / 3.0 GB"))
+        #expect(detail.contains("42 MB/s"))
+        #expect(detail.contains("한 번만"))
+        #expect(!report.isIndeterminate)
+    }
+
+    @Test func aDownloadWithNoRateYetOmitsTheSpeed() {
+        let report = CaptionPipeline.report(
+            for: .downloadingModel(downloaded: 0, total: 3_195_455_570, bytesPerSecond: 0), fraction: 0)
+        #expect(report.detail?.contains("MB/s") == false)
+    }
+
+    /// Loading has no progress to report at all, so the panel must not draw a bar for it.
+    @Test func loadingIsIndeterminateAndExplainsTheWait() {
+        let report = CaptionPipeline.report(for: .loadingModel, fraction: 0)
+        #expect(report.stage == .loadingModel)
+        #expect(report.isIndeterminate)
+        #expect(report.detail?.contains("처음") == true)
+        #expect(report.detail?.contains("다음부터는") == true)
+    }
+
+    @Test func transcribingCarriesItsFractionAndNoNoise() {
+        let report = CaptionPipeline.report(for: .transcribing, fraction: 0.42)
+        #expect(report.stage == .transcribing)
+        #expect(report.fraction == 0.42)
+        #expect(report.detail == nil)
+        #expect(!report.isIndeterminate)
+    }
+
+    @Test func onlyTheFirstRunStagesAreMarkedAsSuch() {
+        #expect(CaptionPipeline.Stage.downloadingModel.isFirstRunOnly)
+        #expect(CaptionPipeline.Stage.loadingModel.isFirstRunOnly)
+        #expect(!CaptionPipeline.Stage.transcribing.isFirstRunOnly)
+        #expect(!CaptionPipeline.Stage.extractingAudio.isFirstRunOnly)
     }
 }

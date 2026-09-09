@@ -124,12 +124,14 @@ func log(_ message: String) {
 final class ProgressReporter: @unchecked Sendable {
     private let lock = NSLock()
     private var lastPercent = -1
+    private var lastLabel = ""
 
     func report(_ label: String, _ fraction: Double) {
         let percent = Int(fraction * 100)
         let shouldPrint = lock.withLock {
-            guard percent > lastPercent else { return false }
-            lastPercent = percent
+            guard percent > lastPercent || label != lastLabel else { return false }
+            lastPercent = max(lastPercent, percent)
+            lastLabel = label
             return true
         }
         if shouldPrint { log("[\(percent)%] \(label)") }
@@ -159,8 +161,9 @@ do {
         let source = arguments.input.pathExtension.lowercased() == "fcpxmld"
             ? arguments.input.appending(path: "Info.fcpxml")
             : arguments.input
-        let result = try await pipeline.run(document: try Data(contentsOf: source)) { stage, fraction in
-            report(stage.korean, fraction)
+        let result = try await pipeline.run(document: try Data(contentsOf: source)) { update in
+            report(update.detail.map { "\(update.stage.korean) — \($0)" } ?? update.stage.korean,
+                   update.fraction)
         }
         try result.document.write(to: output)
 
@@ -194,8 +197,10 @@ do {
         """)
         log("Final Cut Pro에서 File ▸ Import ▸ XML… 로 이 파일을 불러오세요.")
     } else {
-        let words = try await engine.transcribe(audio: arguments.input, language: arguments.language) { fraction in
-            report("음성을 전사하는 중", fraction)
+        let words = try await engine.transcribe(audio: arguments.input, language: arguments.language) { phase, fraction in
+            let update = CaptionPipeline.report(for: phase, fraction: fraction)
+            report(update.detail.map { "\(update.stage.korean) — \($0)" } ?? update.stage.korean,
+                   update.fraction)
         }
         let captions = CaptionBuilder().build(from: words)
         try SRTWriter.string(from: captions).write(to: output, atomically: true, encoding: .utf8)

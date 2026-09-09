@@ -11,18 +11,50 @@ public struct CaptionPipeline: Sendable {
     public enum Stage: Sendable, Equatable {
         case readingDocument
         case extractingAudio
+        /// Fetching the model. Once per model per machine.
+        case downloadingModel
+        /// Loading it into CoreML and, the first time, compiling for the Neural Engine. Minutes,
+        /// with nothing to report — see `isIndeterminate`.
+        case loadingModel
         case transcribing
         case buildingCaptions
         case writingDocument
+
+        /// Whether the fraction means anything. A CoreML load reports nothing at all, so the
+        /// honest display there is a spinner, not a bar frozen at some number.
+        public var isIndeterminate: Bool { self == .loadingModel }
+
+        /// True for the two stages that only happen the first time a model is used — worth saying
+        /// out loud, because otherwise every run looks like it might take ten minutes.
+        public var isFirstRunOnly: Bool { self == .downloadingModel || self == .loadingModel }
 
         public var korean: String {
             switch self {
             case .readingDocument: "클립 정보를 읽는 중"
             case .extractingAudio: "오디오를 추출하는 중"
+            case .downloadingModel: "음성 인식 모델 다운로드 중"
+            case .loadingModel: "모델을 준비하는 중"
             case .transcribing: "음성을 전사하는 중"
             case .buildingCaptions: "자막을 만드는 중"
             case .writingDocument: "Final Cut Pro 문서를 쓰는 중"
             }
+        }
+    }
+
+    /// What the panel draws. More than a fraction, because the stages differ in what they can
+    /// honestly report.
+    public struct Report: Sendable, Equatable {
+        public var stage: Stage
+        /// Overall, 0...1. Meaningless while `stage.isIndeterminate`.
+        public var fraction: Double
+        /// The second line — "1.2 GB / 3.0 GB · 24 MB/s", or the first-run note.
+        public var detail: String?
+        public var isIndeterminate: Bool { stage.isIndeterminate }
+
+        public init(stage: Stage, fraction: Double, detail: String? = nil) {
+            self.stage = stage
+            self.fraction = fraction
+            self.detail = detail
         }
     }
 
@@ -62,11 +94,39 @@ public struct CaptionPipeline: Sendable {
     /// Transcription dominates the wall clock, so it owns most of the progress bar.
     private static let weights: [(Stage, ClosedRange<Double>)] = [
         (.readingDocument, 0...0.02),
-        (.extractingAudio, 0.02...0.12),
-        (.transcribing, 0.12...0.95),
+        (.extractingAudio, 0.02...0.10),
+        (.downloadingModel, 0.10...0.14),
+        (.loadingModel, 0.14...0.18),
+        (.transcribing, 0.18...0.95),
         (.buildingCaptions, 0.95...0.97),
         (.writingDocument, 0.97...1.0),
     ]
+
+    /// Turns an engine phase into something the panel can draw, including the byte counts and the
+    /// once-only note.
+    public static func report(for phase: TranscriptionPhase, fraction: Double) -> Report {
+        switch phase {
+        case let .downloadingModel(downloaded, total, bytesPerSecond):
+            let share = total > 0 ? Double(downloaded) / Double(total) : 0
+            var detail = "\(gigabytes(downloaded)) / \(gigabytes(total))"
+            if bytesPerSecond > 0 { detail += " · \(megabytesPerSecond(bytesPerSecond))" }
+            detail += " · 이 모델을 처음 쓸 때 한 번만 받습니다"
+            return Report(stage: .downloadingModel, fraction: share, detail: detail)
+        case .loadingModel:
+            return Report(stage: .loadingModel, fraction: 0,
+                          detail: "이 모델을 처음 쓸 때만 몇 분 걸립니다. 다음부터는 바로 시작합니다.")
+        case .transcribing:
+            return Report(stage: .transcribing, fraction: fraction)
+        }
+    }
+
+    public static func gigabytes(_ bytes: Int64) -> String {
+        String(format: "%.1f GB", Double(bytes) / 1_073_741_824)
+    }
+
+    public static func megabytesPerSecond(_ bytesPerSecond: Double) -> String {
+        String(format: "%.0f MB/s", bytesPerSecond / 1_048_576)
+    }
 
     private static func overall(_ stage: Stage, _ fraction: Double) -> Double {
         guard let range = weights.first(where: { $0.0 == stage })?.1 else { return fraction }
@@ -81,9 +141,9 @@ public struct CaptionPipeline: Sendable {
     public func run(
         document data: Data,
         clip selected: ClipRef? = nil,
-        progress: @escaping @Sendable (Stage, Double) -> Void = { _, _ in }
+        progress: @escaping @Sendable (Report) -> Void = { _ in }
     ) async throws -> Result {
-        progress(.readingDocument, Self.overall(.readingDocument, 0))
+        progress(Report(stage: .readingDocument, fraction: Self.overall(.readingDocument, 0)))
         let parsed = try FCPXMLReader().read(data: data)
         let clips = try selected.map { [$0] } ?? audibleClips(in: parsed)
 
@@ -95,8 +155,10 @@ public struct CaptionPipeline: Sendable {
         for clip in clips {
             let share = totalDuration > 0 ? clip.durationSeconds / totalDuration : 1
             let base = totalDuration > 0 ? elapsedDuration / totalDuration : 0
-            let scaled: @Sendable (Stage, Double) -> Void = { stage, fraction in
-                progress(stage, Self.overall(stage, base + share * fraction))
+            let scaled: @Sendable (Report) -> Void = { report in
+                var report = report
+                report.fraction = Self.overall(report.stage, base + share * report.fraction)
+                progress(report)
             }
 
             let result = try await caption(clip: clip, in: &document, progress: scaled)
@@ -109,14 +171,14 @@ public struct CaptionPipeline: Sendable {
         guard results.contains(where: { !$0.captions.isEmpty }) else {
             throw CaptionPipelineError.noSpeechFound
         }
-        progress(.writingDocument, 1)
+        progress(Report(stage: .writingDocument, fraction: 1))
         return Result(document: document, clips: results)
     }
 
     private func caption(
         clip: ClipRef,
         in document: inout Data,
-        progress: @escaping @Sendable (Stage, Double) -> Void
+        progress: @escaping @Sendable (Report) -> Void
     ) async throws -> ClipResult {
         // Sandboxed, the path alone is not enough; the bookmark FCP ships is the grant.
         let access = try MediaAccess(clip: clip)
@@ -131,25 +193,24 @@ public struct CaptionPipeline: Sendable {
             start: CMTime(seconds: clip.start.seconds, preferredTimescale: 600),
             duration: CMTime(seconds: clip.duration.seconds, preferredTimescale: 600)
         )
-        progress(.extractingAudio, 0)
+        progress(Report(stage: .extractingAudio, fraction: 0))
         try await AudioExtractor().extract(from: media, range: range, to: audio) { fraction in
-            progress(.extractingAudio, fraction)
+            progress(Report(stage: .extractingAudio, fraction: fraction))
         }
         try Task.checkCancellation()
 
-        progress(.transcribing, 0)
-        let words = try await engine.transcribe(audio: audio, language: language) { fraction in
-            progress(.transcribing, fraction)
+        let words = try await engine.transcribe(audio: audio, language: language) { phase, fraction in
+            progress(Self.report(for: phase, fraction: fraction))
         }
         try Task.checkCancellation()
 
-        progress(.buildingCaptions, 0)
+        progress(Report(stage: .buildingCaptions, fraction: 0))
         let captions = CaptionBuilder(options: captionOptions).build(from: words)
         guard !captions.isEmpty else {
             return ClipResult(clip: clip, captions: [], words: words.count, skipped: 0)
         }
 
-        progress(.writingDocument, 0)
+        progress(Report(stage: .writingDocument, fraction: 0))
         let written = try FCPXMLWriter(language: language ?? "ko")
             .write(captions, to: clip, inDocument: document)
         document = written.document

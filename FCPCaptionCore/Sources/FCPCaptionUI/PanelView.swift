@@ -52,8 +52,8 @@ public struct PanelView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             wideButton("자막 생성", prominent: true) { model.start() }
-        case let .working(stage, fraction):
-            working(stage: stage, fraction: fraction)
+        case let .working(report):
+            working(report)
         case let .finished(finished):
             finishedView(finished)
         case let .failed(message, canRetry):
@@ -119,19 +119,33 @@ public struct PanelView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    private func working(stage: CaptionPipeline.Stage, fraction: Double) -> some View {
+    private func working(_ report: CaptionPipeline.Report) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            ProgressView(value: fraction)
-                .progressViewStyle(.linear)
-            HStack {
-                Text(stage.korean)
+            // A load reports nothing, so it gets a spinner. A bar frozen at a number for five
+            // minutes is indistinguishable from a hang.
+            if report.isIndeterminate {
+                ProgressView().progressViewStyle(.linear)
+            } else {
+                ProgressView(value: report.fraction).progressViewStyle(.linear)
+            }
+            HStack(alignment: .firstTextBaseline) {
+                Text(report.stage.korean)
                     .font(.callout)
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text("\(Int(fraction * 100))%")
-                    .font(.callout)
+                if !report.isIndeterminate {
+                    Text("\(Int(report.fraction * 100))%")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            }
+            if let detail = report.detail {
+                Text(detail)
+                    .font(.caption)
                     .foregroundStyle(.secondary)
                     .monospacedDigit()
+                    .fixedSize(horizontal: false, vertical: true)
             }
             wideButton("취소") { model.cancel() }
         }

@@ -70,10 +70,6 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
     private var pipeline: WhisperKit?
     private var cancelRequested = false
 
-    /// Share of the reported progress spent getting the model ready. The first run downloads
-    /// ~600MB, later runs skip straight past it.
-    private static let preparationShare = 0.15
-
     public init(
         model: WhisperModel = .default,
         modelDirectory: URL = WhisperModel.defaultDirectory,
@@ -89,17 +85,16 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
     public func transcribe(
         audio: URL,
         language: String?,
-        progress: @escaping @Sendable (Double) -> Void
+        progress: @escaping @Sendable (TranscriptionPhase, Double) -> Void
     ) async throws -> [TranscriptWord] {
         setCancelRequested(false)
 
         return try await withTaskCancellationHandler {
-            let pipeline = try await preparedPipeline { fraction in
-                progress(fraction * Self.preparationShare)
-            }
+            let pipeline = try await preparedPipeline { phase in progress(phase, 0) }
             try checkCancellation()
+            progress(.transcribing, 0)
 
-            let windows = try await expectedWindowCount(of: audio)
+            let duration = try await audioDuration(of: audio)
             let decodeOptions = DecodingOptions(
                 verbose: false,
                 task: .transcribe,
@@ -111,12 +106,18 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
                 concurrentWorkerCount: options.concurrentWorkerCount
             )
 
-            let callback: TranscriptionCallback = { [weak self] update in
+            // Progress from how far into the audio the decoder has reached, which is the real
+            // thing — window counts jump around with 16 concurrent workers. Monotonic, because a
+            // bar that goes backwards reads as a bug.
+            let furthest = Furthest()
+            pipeline.segmentDiscoveryCallback = { segments in
+                guard duration > 0, let end = segments.map(\.end).max() else { return }
+                let fraction = furthest.advance(to: min(0.99, Double(end) / duration))
+                progress(.transcribing, fraction)
+            }
+            let callback: TranscriptionCallback = { [weak self] _ in
                 guard let self else { return false }
-                if self.isCancelRequested { return false }
-                let fraction = min(0.99, Double(update.windowId + 1) / windows)
-                progress(Self.preparationShare + (1 - Self.preparationShare) * fraction)
-                return true
+                return !self.isCancelRequested
             }
 
             let results: [TranscriptionResult]
@@ -132,7 +133,8 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
             }
             try checkCancellation()
 
-            progress(1.0)
+            pipeline.segmentDiscoveryCallback = nil
+            progress(.transcribing, 1)
             return Self.words(from: results)
         } onCancel: {
             cancel()
@@ -147,25 +149,32 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
 
     /// Downloads the model if it isn't on disk yet and loads it. Safe to call repeatedly — the
     /// loaded pipeline is cached, and the download step skips files that are already present.
-    public func prepare(progress: @escaping @Sendable (Double) -> Void = { _ in }) async throws {
+    public func prepare(progress: @escaping @Sendable (TranscriptionPhase) -> Void = { _ in }) async throws {
         _ = try await preparedPipeline(progress: progress)
     }
 
-    private func preparedPipeline(progress: @escaping @Sendable (Double) -> Void) async throws -> WhisperKit {
-        if let existing = loadedPipeline {
-            progress(1.0)
-            return existing
-        }
+    private func preparedPipeline(progress: @escaping @Sendable (TranscriptionPhase) -> Void) async throws -> WhisperKit {
+        if let existing = loadedPipeline { return existing }
 
         do {
+            // The download reports a fraction, not bytes, so the byte counts come from the model's
+            // known size — accurate to a few MB and far more useful than a bare percentage.
+            let total = Int64(model.downloadSizeMB) * 1_048_576
+            let rate = TransferRate()
             let folder = try await WhisperKit.download(
                 variant: model.identifier,
                 downloadBase: modelDirectory,
                 from: WhisperModel.repository,
                 progressCallback: { downloadProgress in
-                    progress(min(0.95, downloadProgress.fractionCompleted))
+                    let downloaded = Int64(Double(total) * min(1, downloadProgress.fractionCompleted))
+                    progress(.downloadingModel(
+                        downloaded: downloaded,
+                        total: total,
+                        bytesPerSecond: rate.observe(downloaded)
+                    ))
                 }
             )
+            progress(.loadingModel)
             try checkCancellation()
 
             let config = WhisperKitConfig(
@@ -178,7 +187,6 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
             )
             let pipeline = try await WhisperKit(config)
             store(pipeline: pipeline)
-            progress(1.0)
             return pipeline
         } catch is CancellationError {
             throw CancellationError()
@@ -222,14 +230,12 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
 
     // MARK: - Helpers
 
-    /// Whisper decodes in 30-second windows, so the window count is what progress can be measured
-    /// against. An unreadable duration is not fatal here — it only costs a progress bar.
-    private func expectedWindowCount(of audio: URL) async throws -> Double {
+    private func audioDuration(of audio: URL) async throws -> TimeInterval {
         let asset = AVURLAsset(url: audio)
         guard let duration = try? await asset.load(.duration), duration.isNumeric else {
             throw TranscriptionError.audioUnreadable(audio)
         }
-        return max(1, (duration.seconds / 30).rounded(.up))
+        return duration.seconds
     }
 
     private var loadedPipeline: WhisperKit? {
@@ -250,5 +256,43 @@ public final class WhisperKitEngine: TranscriptionEngine, @unchecked Sendable {
 
     private func checkCancellation() throws {
         if isCancelRequested || Task.isCancelled { throw CancellationError() }
+    }
+}
+
+/// Keeps a fraction from going backwards when reports arrive out of order — with 16 concurrent
+/// workers they do, and a progress bar that jumps backwards reads as a bug.
+private final class Furthest: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = 0.0
+
+    func advance(to fraction: Double) -> Double {
+        lock.withLock {
+            value = max(value, fraction)
+            return value
+        }
+    }
+}
+
+
+/// A smoothed bytes-per-second estimate. Raw deltas between callbacks swing wildly enough to be
+/// useless on screen, so each sample is blended into the last.
+private final class TransferRate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var lastBytes: Int64 = 0
+    private var lastTime = ContinuousClock.now
+    private var smoothed: Double = 0
+
+    func observe(_ bytes: Int64) -> Double {
+        lock.withLock {
+            let now = ContinuousClock.now
+            let seconds = Double((now - lastTime).components.seconds)
+                + Double((now - lastTime).components.attoseconds) / 1e18
+            guard seconds > 0.25, bytes >= lastBytes else { return smoothed }
+            let rate = Double(bytes - lastBytes) / seconds
+            smoothed = smoothed == 0 ? rate : smoothed * 0.7 + rate * 0.3
+            lastBytes = bytes
+            lastTime = now
+            return smoothed
+        }
     }
 }

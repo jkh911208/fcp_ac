@@ -21,7 +21,7 @@ public final class PanelModel {
         /// is no sequence in the document, so captions can only attach to the library clip and
         /// will not appear on any timeline the clip was already edited into.
         case ready(clips: [ClipRef], hasTimeline: Bool)
-        case working(stage: CaptionPipeline.Stage, fraction: Double)
+        case working(CaptionPipeline.Report)
         case finished(Finished)
         case failed(message: String, canRetry: Bool)
     }
@@ -119,15 +119,15 @@ public final class PanelModel {
 
     public func start() {
         guard let document, !clips.isEmpty, task == nil else { return }
-        state = .working(stage: .readingDocument, fraction: 0)
+        state = .working(CaptionPipeline.Report(stage: .readingDocument, fraction: 0))
 
         let settings = self.settings
         task = Task { [makePipeline, deliver] in
             defer { self.task = nil }
             do {
                 // No `clip:` — the pipeline captions every audible clip the document carries.
-                let result = try await makePipeline(settings).run(document: document) { stage, fraction in
-                    Task { @MainActor in self.advance(stage: stage, fraction: fraction) }
+                let result = try await makePipeline(settings).run(document: document) { report in
+                    Task { @MainActor in self.advance(report) }
                 }
                 try Task.checkCancellation()
                 let first = result.clips.first?.clip
@@ -177,9 +177,9 @@ public final class PanelModel {
     // MARK: - Internals
 
     /// Progress can arrive after cancellation or completion; only a running job may repaint.
-    private func advance(stage: CaptionPipeline.Stage, fraction: Double) {
+    private func advance(_ report: CaptionPipeline.Report) {
         guard case .working = state else { return }
-        state = .working(stage: stage, fraction: fraction)
+        state = .working(report)
     }
 
     private func fail(_ error: any Error, canRetry: Bool) {
