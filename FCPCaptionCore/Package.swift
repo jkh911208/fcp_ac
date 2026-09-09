@@ -6,6 +6,7 @@ let package = Package(
     platforms: [.macOS(.v15)],
     products: [
         .library(name: "FCPCaptionCore", targets: ["FCPCaptionCore"]),
+        .library(name: "FCPCaptionUI", targets: ["FCPCaptionUI"]),
         .executable(name: "fcpcaption-cli", targets: ["FCPCaptionCLI"]),
     ],
     dependencies: [
@@ -17,7 +18,11 @@ let package = Package(
             name: "FCPCaptionCore",
             dependencies: [.product(name: "WhisperKit", package: "WhisperKit")]
         ),
+        .target(name: "FCPCaptionUI", dependencies: ["FCPCaptionCore"]),
         .executableTarget(name: "FCPCaptionCLI", dependencies: ["FCPCaptionCore"]),
+        // Renders the panel states to PNG so a design change can be looked at before it ships.
+        .executableTarget(name: "PanelPreview", dependencies: ["FCPCaptionUI", "FCPCaptionCore"]),
         .testTarget(name: "FCPCaptionCoreTests", dependencies: ["FCPCaptionCore"]),
+        .testTarget(name: "FCPCaptionUITests", dependencies: ["FCPCaptionUI"]),
     ]
 )

@@ -1,105 +1,121 @@
 # Xcode setup
 
-The running record of everything that had to be done by hand in the Xcode UI, so a fresh clone can
-be reproduced and so no session has to guess what state the project is in.
+The running record of everything done by hand in the Xcode UI, so a fresh clone can be reproduced
+and no session has to guess what state the project is in.
 
-Per the spec (§14) and `CLAUDE.md`, GUI-only work belongs to the user. Everything below is a click
-path for a person; the agent writes the Swift, runs `xcodebuild`, and fixes compile errors.
+Per spec §14 and `CLAUDE.md`, GUI-only work belongs to the user. Everything below is a click path
+for a person; the agent writes the Swift, runs `xcodebuild`, and fixes the compile errors.
 
-**Status: not started.** Nothing in this document has been done yet.
+**Status: SDK installed (2026-09-09). Xcode project not created yet.**
 
 ---
 
-## 0. Prerequisite — the Workflow Extensions SDK (this is not in Xcode)
+## 0. Workflow Extensions SDK — done ✅
 
-Xcode has **no** Final Cut Pro extension template out of the box, and macOS has no
-`ProExtension.framework`. Both arrive with a separate download from Apple:
+Installed from <https://developer.apple.com/download/all/?q=WorkflowExtensions>. What it put on
+this Mac, verified:
 
-1. Sign in at <https://developer.apple.com/download/all/?q=WorkflowExtensions> (an Apple ID is
-   enough — this is not the paid Developer Program, which is only needed for notarization at M5).
-2. Download the latest **Workflow Extensions SDK** and run the installer. It puts
-   `ProExtension.framework` and the Xcode template where Xcode looks for them.
-3. Restart Xcode, then confirm the template exists: **File ▸ New ▸ Target… ▸ macOS**, and look for
-   a **Workflow Extension** section. If it isn't there, the installer didn't take — stop and say so
-   rather than working around it.
-
-Verified against Apple's own documentation:
-[Building a Workflow Extension](https://developer.apple.com/documentation/professional-video-applications/building-a-workflow-extension).
+| | |
+|---|---|
+| SDK | `/Library/Developer/SDKs/WorkflowExtensionSDK.sdk` — **v1.0.3** (release notes say v1.0.3a, January 2026) |
+| Xcode template | `/Library/Developer/Xcode/Templates/ProVideo/WorkflowExtension/FCP Workflow Extension.xctemplate` |
+| Static library | `usr/lib/libProExtension.a` + `usr/include/ProExtension/ProExtension.h` |
+| Host headers | `Library/Frameworks/ProExtensionHost.framework` — **headers only, no binary** |
 
 ## 1. The host app project
 
-1. **File ▸ New ▸ Project… ▸ macOS ▸ App**.
+1. **File ▸ New ▸ Project… ▸ macOS ▸ App**
    - Product Name: `FCPCaption`
    - Team: your Apple ID (personal team is fine until M5)
-   - Organization Identifier: something stable you own, e.g. `com.jkh911208`
-   - Interface: **SwiftUI**, Language: **Swift**, Storage: **None**, tests: unchecked
-2. Save it at the **repo root** (`/Users/james/repo/fcp_ac`), and **uncheck "Create Git repository"**
-   — the repo already exists.
-3. Select the project in the navigator ▸ the **FCPCaption** target ▸ **General** ▸ Minimum
-   Deployments: **macOS 15.0**.
-4. **Build Settings** (All / Combined) for **every** target:
-   - `Architectures` → `arm64`
-   - `Excluded Architectures` → `x86_64`
-   - `Build Active Architecture Only` → `No` for Release
-   Apple silicon only, per spec §7 — do not ship a universal binary.
+   - Organization Identifier: `com.jkh911208` (or anything stable you own)
+   - Interface **SwiftUI**, Language **Swift**, Storage **None**, tests unchecked
+2. Save at the **repo root** (`/Users/james/repo/fcp_ac`) and **uncheck "Create Git repository"**.
+3. Target **FCPCaption** ▸ **General** ▸ Minimum Deployments: **macOS 15.0**.
+4. **Build Settings** for every target: `Architectures` = `arm64`,
+   `Excluded Architectures` = `x86_64`. Apple silicon only, per spec §7.
 
-## 2. Wire in FCPCaptionCore
+## 2. Wire in the package
 
-1. **File ▸ Add Package Dependencies… ▸ Add Local…** and choose the `FCPCaptionCore` folder in the
-   repo.
-2. Add the `FCPCaptionCore` library product to the app target, and (in step 3) to the extension
-   target as well.
+**File ▸ Add Package Dependencies… ▸ Add Local…** → choose the `FCPCaptionCore` folder in the repo.
+Add **`FCPCaptionCore`** and **`FCPCaptionUI`** to the app target, and to the extension target in
+step 3.
 
 ## 3. The extension target
 
-1. **File ▸ New ▸ Target… ▸ macOS ▸ Workflow Extension** (from the SDK in step 0).
-   - Product Name: `FCPCaptionExtension`
-   - Embed in Application: `FCPCaption`
-2. When Xcode offers to activate the new scheme, **Activate**.
-3. Check the generated `Info.plist`. It should already contain the extension point identifier and
-   the principal view controller class — read the real values off the template rather than typing
-   them from a document:
+**File ▸ New ▸ Target… ▸ macOS ▸ FCP Workflow Extension**
+- Product Name: `FCPCaptionExtension`
+- Language: **Swift**
+- Embed in Application: `FCPCaption`
+- Activate the scheme when Xcode offers.
+
+The template already sets everything below — this is a checklist, not typing:
+
+| Setting | Value |
+|---|---|
+| `NSExtensionPointIdentifier` | `com.apple.FinalCut.WorkflowExtension` |
+| `ProExtensionPrincipalViewControllerClass` | `<Module>.FCPCaptionExtensionViewController` |
+| `ADDITIONAL_SDKS` | `/Library/Developer/SDKs/WorkflowExtensionSDK.sdk` |
+| `LD_ENTRY_POINT` | `_ProExtensionMain` |
+| `OTHER_LDFLAGS` | `-fapplication-extension -lProExtension` |
+| `MACH_O_TYPE` | `mh_execute` |
+| Bridging header | `#import <ProExtension/ProExtension.h>` |
+| Entitlement | `com.apple.security.app-sandbox` = YES |
+
+## 4. Three things the template does *not* do
+
+All three come from the SDK release notes, and the extension does not work without them.
+
+1. **Signing & Capabilities ▸ Hardened Runtime** (extension target): check
+   **Disable Library Validation** and **Apple Events**. The SDK is not fully compatible with
+   Hardened Runtime; with library validation on, the extension simply doesn't load.
+2. **The scripting-target entitlement.** `ProExtensionHost` talks to Final Cut Pro over Apple
+   Events, and a sandboxed extension needs permission to target it. Tell the agent when the target
+   exists — this is a plist edit, not a GUI step:
    ```xml
-   <key>NSExtension</key>
+   <key>com.apple.security.scripting-targets</key>
    <dict>
-     <key>NSExtensionPointIdentifier</key>
-     <string>com.apple.FinalCut.WorkflowExtension</string>
-     <key>ProExtensionPrincipalViewControllerClass</key>
-     <string>…</string>
+     <key>com.apple.FinalCut</key><array><string>com.apple.FinalCut.library.inspection</string></array>
+     <key>com.apple.FinalCutApp</key><array><string>com.apple.FinalCut.library.inspection</string></array>
+     <key>com.apple.FinalCutTrial</key><array><string>com.apple.FinalCut.library.inspection</string></array>
    </dict>
    ```
-4. Add a minimum panel size so the sidebar can't crush the UI (spec §11 — the FCP sidebar is about
-   300–400pt wide):
-   ```xml
-   <key>ProExtensionAttributes</key>
-   <dict>
-     <key>ContentViewMinimumWidth</key><integer>300</integer>
-     <key>ContentViewMinimumHeight</key><integer>320</integer>
-   </dict>
-   ```
+   (`com.apple.FinalCutApp` is the new variant the January 2026 notes added.)
+3. **Container app `Info.plist`** needs
+   `NSAppleEventsUsageDescription` = `Extensions can interact with Final Cut Pro.`
 
-## 4. Make Final Cut Pro see it
+## 5. Swift 6 caveat
 
-1. Build and **run the extension scheme once** (Xcode asks which app to run it in — choose Final
-   Cut Pro). Registering the appex is what makes it appear in FCP.
-2. In Final Cut Pro: **Window ▸ Extensions ▸ FCPCaption**.
-3. If it doesn't appear, check that the built app is somewhere LaunchServices scans (build to
-   `/Applications` or run it once from Finder), and check `pluginkit -mAvv | grep FCPCaption`.
+The release notes: *"Workflow Extensions SDK v1.0.3 may not be compatible with the Swift 6 Runtime
+due to initialization of the principal ViewController class from a background thread."*
 
-## 5. When it works
+So the **extension target** stays on the Swift 5 language mode (`SWIFT_VERSION = 5`) and its view
+controller does its setup on the main thread. `FCPCaptionCore` and `FCPCaptionUI` remain Swift 6 —
+the caveat is about how the host instantiates the principal class, not about what it links.
 
-Say so, and the agent will:
-- capture the FCPXML the panel receives on the first real drop as `Fixtures/dropped_clip.fcpxml`,
-- record here exactly what was clicked and any deviation from the above,
-- move on to M2, the import spike (spec §10).
+## 6. Make Final Cut Pro see it
+
+1. Build and run the extension scheme once; when Xcode asks which app to run it in, choose Final
+   Cut Pro. Registering the appex is what makes it appear.
+2. **Window ▸ Extensions ▸ FCPCaption** in Final Cut Pro.
+3. If it doesn't appear: `pluginkit -mAvv | grep -i fcpcaption`. The release notes warn that copies
+   of the app in non-standard locations also get discovered and which one wins is undefined — keep
+   exactly one copy.
 
 ---
 
-## What is still unverified
+## What the SDK settled, and what it didn't
 
-- The exact `NSExtensionPointIdentifier` string. Apple's documentation renders it inconsistently;
-  the template's own value is the authority, which is why step 3 says to read it rather than type it.
-- How the extension receives a dragged clip. Apple documents `ProExtensionHostSingleton()`,
-  `FCPXHost`, `FCPXTimeline` and `FCPXTimelineObserver` for talking to the timeline, but the
-  drag-and-drop payload path isn't spelled out in the overview — it has to come from the SDK's
-  headers and sample code once installed. **Do not implement against a guess.**
+**The host API is read-only.** `FCPXHost` gives the timeline playhead, the active sequence's name,
+start, duration, frame duration and timecode format, plus library/event/project names and UIDs.
+That is all of it. **There is no API for sending FCPXML — or anything else — back into Final Cut
+Pro.** So the §10 fallback ladder's top rung, injecting captions straight into the open project,
+is not reachable with the public SDK, and the design has to go through an FCPXML the user imports
+(or drags back into the timeline).
+
+**Still unverified, to be answered by the first real drop** — the panel logs what it actually
+receives rather than assuming:
+- whether a clip dragged from the timeline arrives as pasteboard data or as a file URL, and under
+  which type. Final Cut Pro declares `com.apple.FinalCutPro.xml` (`.fcpxml`) and
+  `com.apple.finalcutpro.xmld` (`.fcpxmld`) in its own `Info.plist`, which is what we register for.
+- whether dragging FCPXML *from* the panel into the timeline works, which would be a better
+  delivery path than opening a file.

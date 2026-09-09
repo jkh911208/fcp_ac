@@ -74,6 +74,30 @@ for real, both now tests:
 - frame quantization (start rounds down, end rounds up) made two adjacent captions overlap by a
   frame even though they didn't overlap in seconds — invalid on one caption lane.
 
+### M1 — the panel, and what the SDK settled (this branch)
+
+The user installed the **Workflow Extensions SDK v1.0.3** (2026-09-09). Reading it answered the
+project's biggest open question, and it is not the answer the spec hoped for:
+
+> **The host API is read-only.** `FCPXHost` exposes the timeline playhead, the active sequence's
+> name/start/duration/frameDuration/timecodeFormat, and library/event/project names and UIDs.
+> There is **no API to send FCPXML — or anything — back into Final Cut Pro.** Spec §10's top rung
+> (captions injected straight into the open project) is unreachable with the public SDK. Delivery
+> has to be an FCPXML the user imports, or one dragged from the panel into the timeline.
+
+Also learned, all from the SDK itself rather than documentation: the extension must **not** link
+`ProExtensionHost` (headers only, no binary); it needs Hardened Runtime exceptions and an Apple
+Events scripting-target entitlement; and **SDK v1.0.3 may not work under the Swift 6 runtime**,
+so the extension target stays on Swift 5 while the packages remain Swift 6. All of it, with the
+click path, is in `docs/XCODE_SETUP.md`.
+
+- `FCPCaptionUI` — the panel as a package target, so it compiles, renders and tests without the
+  extension existing. `PanelModel` is an explicit state machine (waiting / reading / ready /
+  working / finished / failed), which is what keeps a real-looking value from flashing before the
+  data arrives. 9 tests.
+- `PanelPreview` — renders every state to PNG in both appearances. This is how a design change
+  gets looked at before it ships, per `CLAUDE.md`.
+
 ### M0 and setup
 
 - **Repo, rules, CI.** `CLAUDE.md` (ported from the sibling `shiftly` repo and adapted to
@@ -118,12 +142,14 @@ for real, both now tests:
 
 ## Next
 
-1. ~~Fixture (a) and the FCPXML reader/writer~~ — done on `m1-fcpxml`.
-2. Create the Xcode project: host app + Workflow Extension target (**user does this in the GUI**;
-   step-by-step to be written into `docs/XCODE_SETUP.md` as it happens).
-3. Panel shows the dropped clip's name and duration — M1's completion bar. Capture the FCPXML it
-   receives as fixture (b) the first time it works.
-4. Then M2, the import spike (spec §10), before any of M3.
+1. ~~Fixture (a), the FCPXML reader/writer, audio extraction, the pipeline, the panel UI~~ — done.
+2. **Blocked on the user:** create the Xcode project and the extension target — `docs/XCODE_SETUP.md`
+   steps 1–3. Five minutes of clicking; everything after it is code.
+3. Then, in order: the entitlement and Info.plist edits (agent, plist files not GUI), the view
+   controller hosting `PanelView`, and a first real drop — which captures fixture (b) and answers
+   what the pasteboard actually carries.
+4. M2 is now half-answered by the SDK headers. What remains is only *which* delivery path works:
+   dragging FCPXML from the panel into the timeline, or opening the file for import.
 
 ## Blocked on the user
 
