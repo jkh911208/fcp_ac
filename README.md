@@ -59,7 +59,7 @@ cd FCPCaptionCore && swift build -c release
    .build/release/fcpcaption-cli ~/Desktop/MyProject.fcpxmld
    ```
    It extracts the clip's audio with AVFoundation, transcribes it on this Mac, and writes
-   `MyProject.captioned.fcpxml` next to the input. The first run downloads the model (~600 MB).
+   `MyProject.captioned.fcpxml` next to the input. The first run downloads the model (3.0 GB for large-v3; large-v3-turbo is 1.5 GB and faster).
 3. **Back in Final Cut Pro:** **File ▸ Import ▸ XML…** and choose the `.captioned.fcpxml`.
    The captions arrive on the clip's caption lane, in a new project.
 
@@ -69,7 +69,7 @@ Point it at a media file instead and you get a plain `.srt`:
 .build/release/fcpcaption-cli clip.mov --language ko      # -> clip.srt
 ```
 
-Options: `--model large-v3-turbo|large-v3`, `--language ko|auto`, `--output PATH`.
+Options: `--model large-v3|large-v3-turbo`, `--language ko|auto`, `--output PATH`.
 
 ## Install
 
@@ -90,7 +90,7 @@ Try the transcription spike on any audio or video file:
 swift run -c release fcpcaption-cli /path/to/clip.mov --model large-v3-turbo --language ko
 ```
 
-The first run downloads the model (~600 MB) into `~/Library/Application Support/FCPCaption/models`.
+The first run downloads the model into `~/Library/Application Support/FCPCaption/models` — 3.0 GB for the default large-v3, or 1.5 GB for large-v3-turbo.
 It writes a `.srt` next to the input file.
 
 ## Roadmap

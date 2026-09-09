@@ -93,9 +93,20 @@ struct WhisperModelTests {
         #expect(WhisperModel.allCases.map(\.displayName) == ["large-v3", "large-v3-turbo"])
     }
 
-    @Test func turboIsTheDefaultAndTheSmallerDownload() {
-        #expect(WhisperModel.default == .largeV3Turbo)
+    @Test func accuracyIsTheDefaultAndTurboIsTheSmallerDownload() {
+        // large-v3 by default: this app exists because the built-in transcription gets Korean
+        // wrong, so accuracy is what it is for. Turbo is the deliberate trade.
+        #expect(WhisperModel.default == .largeV3)
         #expect(WhisperModel.largeV3Turbo.downloadSizeMB < WhisperModel.largeV3.downloadSizeMB)
+    }
+
+    @Test func everyModelExplainsItselfAndItsCost() {
+        for model in WhisperModel.allCases {
+            #expect(!model.summary.isEmpty)
+            #expect(model.downloadSizeDescription.hasSuffix(" GB"))
+        }
+        #expect(WhisperModel.largeV3.downloadSizeDescription == "3.0 GB")
+        #expect(WhisperModel.largeV3Turbo.downloadSizeDescription == "1.5 GB")
     }
 
     @Test func identifiersAreTheMacOptimisedVariants() {

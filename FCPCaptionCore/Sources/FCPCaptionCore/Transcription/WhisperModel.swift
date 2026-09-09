@@ -9,13 +9,14 @@ import Foundation
 /// `large-v3` maps to `openai_whisper-large-v3_turbo` and not to the plain folder. This app is
 /// macOS-only, so the optimised variant is always the right one.
 public enum WhisperModel: String, CaseIterable, Sendable, Codable {
-    /// Whisper large-v3. Slower and much bigger; the fallback when turbo mishears something.
+    /// Whisper large-v3. The default, because accuracy is the point of this app.
     case largeV3 = "openai_whisper-large-v3_turbo"
-    /// Whisper large-v3-turbo (the v20240930 checkpoint). The default: WhisperKit's own
-    /// recommendation on macOS for speed *and* accuracy, at half the download.
+    /// Whisper large-v3-turbo: large-v3 with its decoder pruned from 32 layers to 4, then
+    /// finetuned. Much faster and half the download, at a small cost in accuracy — the choice for
+    /// a smaller disk or a faster turnaround.
     case largeV3Turbo = "openai_whisper-large-v3-v20240930_turbo"
 
-    public static let `default` = WhisperModel.largeV3Turbo
+    public static let `default` = WhisperModel.largeV3
 
     public var identifier: String { rawValue }
 
@@ -34,6 +35,21 @@ public enum WhisperModel: String, CaseIterable, Sendable, Codable {
         case .largeV3: 3_047
         case .largeV3Turbo: 1_563
         }
+    }
+
+    /// The one line Settings shows under the name. It has to answer "why would I pick the other
+    /// one?", because the difference is real: the two models share an audio encoder byte for byte,
+    /// and differ in the decoder — 32 layers against 4.
+    public var summary: String {
+        switch self {
+        case .largeV3: "가장 정확합니다. 기본값."
+        case .largeV3Turbo: "더 빠르고 용량이 절반입니다. 정확도는 조금 낮습니다."
+        }
+    }
+
+    /// e.g. "3.0 GB".
+    public var downloadSizeDescription: String {
+        String(format: "%.1f GB", Double(downloadSizeMB) / 1024)
     }
 
     public static let repository = "argmaxinc/whisperkit-coreml"

@@ -59,7 +59,7 @@ cd FCPCaptionCore && swift build -c release
    .build/release/fcpcaption-cli ~/Desktop/내프로젝트.fcpxmld
    ```
    클립 오디오를 AVFoundation으로 뽑아 이 Mac에서 전사하고, 입력 파일 옆에
-   `내프로젝트.captioned.fcpxml`을 만듭니다. 첫 실행에서 모델(약 600MB)을 내려받습니다.
+   `내프로젝트.captioned.fcpxml`을 만듭니다. 첫 실행에서 모델(large-v3 3.0GB)을 내려받습니다.
 3. **다시 Final Cut Pro에서:** **File ▸ Import ▸ XML…** 로 `.captioned.fcpxml`을 불러오면,
    새 프로젝트에 자막이 캡션 레인에 붙어 있습니다.
 
@@ -69,7 +69,7 @@ cd FCPCaptionCore && swift build -c release
 .build/release/fcpcaption-cli clip.mov --language ko      # -> clip.srt
 ```
 
-옵션: `--model large-v3-turbo|large-v3`, `--language ko|auto`, `--output 경로`.
+옵션: `--model large-v3|large-v3-turbo`, `--language ko|auto`, `--output 경로`.
 
 ## 설치
 
@@ -90,7 +90,7 @@ swift build && swift test
 swift run -c release fcpcaption-cli /path/to/clip.mov --model large-v3-turbo --language ko
 ```
 
-첫 실행에서 모델(약 600MB)을 `~/Library/Application Support/FCPCaption/models`에 내려받고,
+첫 실행에서 모델을 `~/Library/Application Support/FCPCaption/models`에 내려받고 (기본 large-v3 3.0GB, large-v3-turbo는 1.5GB에 더 빠름),
 입력 파일과 같은 위치에 `.srt`를 씁니다.
 
 ## 로드맵
