@@ -27,14 +27,19 @@ final class FCPCaptionExtensionViewController: NSViewController {
             let dropView = CaptionDropView(frame: NSRect(x: 0, y: 0, width: 340, height: 420))
             dropView.onDrop = { [weak model] data in
                 MainActor.assumeIsolated {
-                    // Asked here because Final Cut Pro is frontmost during a drag; by the time the
-                    // user presses the button the panel has focus and the host reports no active
-                    // sequence at all.
-                    HostContext.refresh()
+                    // Show the clips first: parsing is instant, and the host walk below is not.
                     model?.receive(data)
+                    // Asked immediately after the drop, because that is the last moment Final Cut
+                    // Pro is frontmost — by the time the user presses the button the panel has
+                    // focus and the host reports no active sequence at all.
+                    //
+                    // It must not move any earlier than this. Asking during the drag blocked
+                    // Final Cut Pro while it waited for the drag callback to return, and a mouse
+                    // release inside that window lost the drop outright. `CaptionDropView` calls
+                    // this handler a runloop turn after the drag ends for the same reason.
+                    DispatchQueue.main.async { HostContext.refresh() }
                 }
             }
-            dropView.onDragEntered = { HostContext.refresh() }
 
             let panel = NSHostingView(rootView: PanelView(
                 model: model,
@@ -84,7 +89,6 @@ final class FCPCaptionExtensionViewController: NSViewController {
     @MainActor
     private static func makeModel() -> PanelModel {
         PanelModel(
-            engineLabel: "",
             makePipeline: { settings in
                 CaptionPipeline(
                     engine: WhisperKitEngine(model: settings.model, options: settings.engine),

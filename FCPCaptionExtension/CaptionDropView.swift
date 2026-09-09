@@ -11,9 +11,8 @@ import UniformTypeIdentifiers
 final class CaptionDropView: NSView {
     private static let log = Logger(subsystem: "com.jkh911208.FCPCaption", category: "drop")
 
+    /// Called **after** the drag session has ended, never during it. See `performDragOperation`.
     var onDrop: ((Data) -> Void)?
-    /// Fired as a drag arrives — the moment Final Cut Pro is definitely frontmost.
-    var onDragEntered: (() -> Void)?
 
     override init(frame frameRect: NSRect) {
         super.init(frame: frameRect)
@@ -48,17 +47,26 @@ final class CaptionDropView: NSView {
         // actually sends, and it is a fact worth writing down rather than guessing at.
         let types = sender.draggingPasteboard.types?.map(\.rawValue).joined(separator: ", ") ?? "none"
         Self.log.notice("drag entered with types: \(types, privacy: .public)")
-        onDragEntered?()
+        // Nothing slow may happen here. Final Cut Pro is blocked waiting for this to return, and
+        // if the user releases the mouse while it is, AppKit abandons the drag and
+        // `performDragOperation` is never called at all — the drop is simply lost.
         return .copy
     }
 
+    /// Reads the pasteboard — which is local and fast — and hands the data on **one runloop turn
+    /// later**, so this returns to AppKit immediately.
+    ///
+    /// Handling the drop inline used to mean asking Final Cut Pro for the open project from inside
+    /// this call, while Final Cut Pro was blocked waiting for it to return. The measured cost was
+    /// around two seconds, and the drop was lost whenever the mouse came up inside that window.
+    /// Whatever the handler does now, it cannot stall the drag, because the drag is already over.
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         let pasteboard = sender.draggingPasteboard
 
         for type in pasteboard.types ?? [] where type.rawValue.contains("finalcutpro") || type.rawValue.contains("FinalCutPro") {
             if let data = pasteboard.data(forType: type), !data.isEmpty {
                 Self.log.notice("using pasteboard data of type \(type.rawValue, privacy: .public)")
-                onDrop?(data)
+                deliver(data)
                 return true
             }
         }
@@ -67,7 +75,7 @@ final class CaptionDropView: NSView {
            let url = urls.first(where: { ["fcpxml", "fcpxmld"].contains($0.pathExtension.lowercased()) }) ?? urls.first {
             do {
                 Self.log.notice("using dropped file \(url.lastPathComponent, privacy: .public)")
-                onDrop?(try DroppedDocument.data(atFile: url))
+                deliver(try DroppedDocument.data(atFile: url))
                 return true
             } catch {
                 Self.log.error("could not read dropped file: \(error.localizedDescription, privacy: .public)")
@@ -77,5 +85,9 @@ final class CaptionDropView: NSView {
 
         Self.log.error("drop carried nothing we could read")
         return false
+    }
+
+    private func deliver(_ data: Data) {
+        DispatchQueue.main.async { [onDrop] in onDrop?(data) }
     }
 }

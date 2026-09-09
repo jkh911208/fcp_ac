@@ -3,53 +3,36 @@ import SwiftUI
 
 /// The panel's settings. Everything measured in this project that has a trade-off is a control
 /// here, with the trade-off written next to it rather than left for the user to discover.
+///
+/// Laid out flat and always visible, inside whatever is scrolling it — there is no "done", because
+/// there is nothing to dismiss. Each change saves itself.
 public struct SettingsView: View {
     @Binding var settings: FCPCaptionSettings
-    var onDone: () -> Void
 
-    public init(settings: Binding<FCPCaptionSettings>, onDone: @escaping () -> Void) {
+    public init(settings: Binding<FCPCaptionSettings>) {
         self._settings = settings
-        self.onDone = onDone
     }
 
     public var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Text("설정")
-                    .font(.title3).bold()
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                model
-                Divider()
-                reliability
-                Divider()
-                language
-                Divider()
-                section("자막 형식") {
-                    Picker("", selection: $settings.form) {
-                        ForEach(FCPXMLWriter.Form.allCases, id: \.self) { Text($0.korean).tag($0) }
-                    }
-                    .pickerStyle(.radioGroup)
-                    .labelsHidden()
-                    note(settings.form.summary)
+        VStack(alignment: .leading, spacing: 20) {
+            model
+            Divider()
+            reliability
+            Divider()
+            language
+            Divider()
+            section("자막 형식") {
+                Picker("", selection: $settings.form) {
+                    ForEach(FCPXMLWriter.Form.allCases, id: \.self) { Text($0.korean).tag($0) }
                 }
-                Divider()
-                section("자막 모양") { CaptionStyleView(style: $settings.style) }
-                Divider()
-                advanced
+                .pickerStyle(.radioGroup)
+                .labelsHidden()
+                note(settings.form.summary)
             }
-            .padding(16)
-        }
-        .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Divider()
-                Button(action: onDone) { Text("완료").frame(maxWidth: .infinity) }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-                    .padding(16)
-            }
-            // Opaque, not a material: the settings scroll under this bar, and translucency let
-            // radio buttons show through the button.
-            .background(Color(nsColor: .windowBackgroundColor))
+            Divider()
+            section("자막 모양") { CaptionStyleView(style: $settings.style) }
+            Divider()
+            advanced
         }
     }
 

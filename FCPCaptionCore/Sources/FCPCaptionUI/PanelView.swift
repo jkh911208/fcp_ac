@@ -22,17 +22,21 @@ public struct PanelView: View {
     }
 
     public var body: some View {
-        Group {
-            if model.showsSettings {
-                SettingsView(settings: $model.settings) { model.showsSettings = false }
-            } else {
-                VStack(alignment: .leading, spacing: 14) {
-                    content
-                    Spacer(minLength: 0)
-                    footer
-                }
-                .padding(16)
+        // One scrolling column, settings included. They used to live behind a gear button, which
+        // in a sidebar this narrow meant a small target hiding most of what the panel can do —
+        // and the panel had a screenful of empty space under the button anyway.
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                content
+                Divider()
+                    .padding(.top, 2)
+                // Visible but not editable during a run: changing the model under a running
+                // transcription would describe a result that is not the one being produced.
+                SettingsView(settings: $model.settings)
+                    .disabled(isWorking)
+                    .opacity(isWorking ? 0.4 : 1)
             }
+            .padding(16)
         }
         .frame(minWidth: 280, minHeight: 300)
         .background(Color(nsColor: .windowBackgroundColor))
@@ -212,30 +216,6 @@ public struct PanelView: View {
             }
             wideButton("처음으로") { model.reset() }
         }
-    }
-
-    private var footer: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "cpu")
-            Text(model.engineLabel)
-                .lineLimit(1)
-                .truncationMode(.middle)
-            Spacer(minLength: 8)
-            // Disabled mid-run: changing the model under a running transcription would describe
-            // a result that is not the one being produced.
-            Button {
-                model.showsSettings = true
-            } label: {
-                Label("설정", systemImage: "gearshape.fill")
-                    .font(.callout)
-                    .labelStyle(.titleAndIcon)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.regular)
-            .disabled(isWorking)
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
     }
 
     private var isWorking: Bool {
