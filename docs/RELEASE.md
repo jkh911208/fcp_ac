@@ -57,10 +57,26 @@ Tools/package_release.sh
 ```
 
 It regenerates the project with that identity, builds Release, signs the appex **before** the app
-that contains it, builds the dmg, notarizes, staples, and finally checks the result the way
-Gatekeeper will (`spctl --assess`, `stapler validate`). Without `FCPCAPTION_NOTARY_PROFILE` it
-still signs and says clearly that it skipped notarization, rather than producing a dmg that fails
-on someone else's Mac.
+that contains it, then **notarizes twice** — once for the app and once for the dmg — and checks the
+result the way Gatekeeper will (`spctl --assess`, `stapler validate`). Without
+`FCPCAPTION_NOTARY_PROFILE` it still signs and says clearly that it skipped notarization, rather
+than producing a dmg that fails on someone else's Mac.
+
+**Why twice.** A notarization ticket belongs to one artifact. v0.1.0 stapled only the dmg, so the
+app copied out of it into `/Applications` carried no ticket: Gatekeeper had to ask Apple over the
+network at first launch. Online that is invisible; offline, or behind a firewall, the first launch
+of a brand-new app is blocked — the worst possible moment. So the app is notarized and stapled
+first, the dmg is built from the stapled app, and the script **refuses to continue** if the copy
+into the image lost the ticket. Check either artifact with:
+
+```bash
+xcrun stapler validate /Applications/FCPCaption.app
+```
+
+`notarytool` takes an archive rather than a bundle, and the archive must be made with `ditto -c -k
+--keepParent` — `zip(1)` does not preserve the symlinks inside an app bundle and the submission is
+rejected. The ticket comes back keyed to the code's hash, which is why an archive of the app earns
+a ticket that the app itself can then carry.
 
 It also refuses to continue if library validation ended up enabled on the extension. That is not
 paranoia: the Workflow Extensions SDK does not work with it, and the failure is silent — the
@@ -90,13 +106,21 @@ Developer ID certificate and notarization credentials as repository secrets. Tha
 if releases ever become frequent enough to be a chore; it is not worth the secret handling for a
 release every few weeks.
 
-## A trap worth remembering
+## Traps worth remembering
+
+### bash 3.2
 
 macOS ships **bash 3.2**, where `set -u` treats an empty array's `"${arr[@]}"` as an *unbound
 variable* — not as nothing. The optional `--keychain` argument in `package_release.sh` was written
 that way and aborted every local release at the signing step, because the empty case *is* the
 normal case here and had never been exercised. It is written as `${arr[@]+"${arr[@]}"}` now. Any
 new optional-argument array in these scripts needs the same guard.
+
+### Copying an app bundle
+
+`cp -R` does not carry every piece of bundle metadata. Use `ditto`, which does — a stapled ticket
+that survives signing but not the copy into the disk image would be a defect nothing here would
+have caught, which is why the script validates the staged copy rather than trusting the copy.
 
 ## Verifying on another Mac
 
@@ -106,6 +130,14 @@ Locally, the closest check is to strip the quarantine-free path and test as a do
 ```bash
 xattr -w com.apple.quarantine "0081;00000000;Safari;" build/FCPCaption.dmg
 spctl --assess --type open --context context:primary-signature -vv build/FCPCaption.dmg
+```
+
+Then install from that dmg and check the installed copy, which is the part that outlives the
+image — including the ticket that lets it launch with no network:
+
+```bash
+spctl --assess --type execute -vv /Applications/FCPCaption.app
+xcrun stapler validate /Applications/FCPCaption.app
 ```
 
 A real second Mac is still the real test.
