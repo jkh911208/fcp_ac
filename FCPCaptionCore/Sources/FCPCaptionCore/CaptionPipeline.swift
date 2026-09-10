@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import os
 
 /// The whole job, once: FCPXML in, the same FCPXML with Korean captions on a clip out.
 ///
@@ -7,6 +8,8 @@ import Foundation
 /// here — not in the UI — is what lets the caption path be tested and used before the extension
 /// exists.
 public struct CaptionPipeline: Sendable {
+    private static let log = Logger(subsystem: "com.jkh911208.FCPCaption", category: "pipeline")
+
     /// What the caller shows while this runs. Fractions are of the whole job, not of the stage.
     public enum Stage: Sendable, Equatable {
         case readingDocument
@@ -94,6 +97,20 @@ public struct CaptionPipeline: Sendable {
         /// Captions that could not be placed because the editor's own captions already held that
         /// time. Reported, never silently dropped.
         public var skipped: Int { clips.reduce(0) { $0 + $1.skipped } }
+        /// Clips that produced no captions, and the reason — read off the edit, or a failure
+        /// during the run. Never silently dropped: a caption track missing a shot with no
+        /// explanation reads as a bug, and on a 117-clip project it is invisible.
+        public var omitted: [Omission] = []
+    }
+
+    public struct Omission: Sendable, Equatable {
+        public var clipName: String
+        public var reason: String
+
+        public init(clipName: String, reason: String) {
+            self.clipName = clipName
+            self.reason = reason
+        }
     }
 
     public struct ClipResult: Sendable {
@@ -182,12 +199,23 @@ public struct CaptionPipeline: Sendable {
     ) async throws -> Result {
         progress(Report(stage: .readingDocument, fraction: Self.overall(.readingDocument, 0)))
         let parsed = try FCPXMLReader().read(data: data)
-        let clips = try selected.map { [$0] } ?? audibleClips(in: parsed)
+        let clips: [ClipRef]
+        let skippedByTheEdit: [Omission]
+        if let selected {
+            clips = [selected]
+            skippedByTheEdit = []
+        } else {
+            (clips, skippedByTheEdit) = try captionableClips(in: parsed)
+        }
 
         let totalDuration = clips.reduce(0.0) { $0 + $1.durationSeconds }
         var elapsedDuration = 0.0
         var document = data
         var results: [ClipResult] = []
+        var omissions = skippedByTheEdit
+        // Kept so a run of one clip can rethrow what actually went wrong, rather than burying it
+        // under a summary that says the same thing in a type nobody can match on.
+        var firstFailure: (any Error)?
 
         for clip in clips {
             let share = totalDuration > 0 ? clip.durationSeconds / totalDuration : 1
@@ -198,9 +226,34 @@ public struct CaptionPipeline: Sendable {
                 progress(report)
             }
 
-            let result = try await caption(clip: clip, in: &document, progress: scaled)
-            results.append(result)
+            do {
+                results.append(try await caption(clip: clip, in: &document, progress: scaled))
+            } catch is CancellationError {
+                // The user asked to stop. That is not a clip that failed.
+                throw CancellationError()
+            } catch {
+                // One odd clip must not throw away the whole run. A 117-clip project failed
+                // entirely because a single retimed shot started past the end of its media, and
+                // four minutes of transcription went with it.
+                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                Self.log.error("""
+                    clip \(clip.name, privacy: .public) failed, continuing: \
+                    \(message, privacy: .public)
+                    """)
+                omissions.append(Omission(clipName: clip.name, reason: message))
+                if firstFailure == nil { firstFailure = error }
+            }
             elapsedDuration += clip.durationSeconds
+        }
+
+        // Nothing at all came back, and every clip had a reason. Say the reasons rather than a
+        // generic failure — they are the diagnosis.
+        if results.isEmpty, let first = omissions.first {
+            // One clip, one failure: the original error is more precise than any summary of it,
+            // and callers can still match on its case.
+            if omissions.count == 1, let firstFailure { throw firstFailure }
+            throw CaptionPipelineError.everyClipFailed(
+                count: omissions.count, firstReason: first.reason)
         }
 
         // Silence on one clip of several is normal — a b-roll shot with no dialogue. Silence on
@@ -211,6 +264,7 @@ public struct CaptionPipeline: Sendable {
         progress(Report(stage: .writingDocument, fraction: 1))
         var result = Result(document: try FCPXMLContainerWriter.wrapping(document, in: container),
                             clips: results)
+        result.omitted = omissions
         result.keptInPlace = container.isUsable
         result.frameDuration = parsed.frameDuration
         result.style = style
@@ -259,19 +313,49 @@ public struct CaptionPipeline: Sendable {
         return ClipResult(clip: clip, captions: captions, words: words.count, skipped: written.skipped)
     }
 
-    /// Every clip with audio, in the order the document lists them.
-    private func audibleClips(in document: FCPXMLDocument) throws -> [ClipRef] {
-        let audible = document.clips.filter(\.hasAudio)
-        guard !audible.isEmpty else {
-            throw document.clips.isEmpty ? CaptionPipelineError.noClips : CaptionPipelineError.noAudibleClip
+    /// Every clip worth transcribing, in the order the document lists them.
+    ///
+    /// Also logs the whole table. When a run goes wrong the first question is always "which clip,
+    /// and what were its numbers" — and the answer used to require exporting the project's FCPXML
+    /// by hand. It is in the diagnostics zip now.
+    private func captionableClips(in document: FCPXMLDocument) throws -> (run: [ClipRef], skipped: [Omission]) {
+        Self.log.notice("document: \(document.clips.count, privacy: .public) clips")
+        for clip in document.clips {
+            Self.log.notice("""
+                clip \(clip.name, privacy: .public) <\(clip.element, privacy: .public)> \
+                ref=\(clip.assetID, privacy: .public) \
+                offset=\(clip.offset.seconds, format: .fixed(precision: 2), privacy: .public)s \
+                start=\(clip.start.seconds, format: .fixed(precision: 2), privacy: .public)s \
+                assetStart=\(clip.assetStart.seconds, format: .fixed(precision: 2), privacy: .public)s \
+                mediaStart=\(clip.mediaStartSeconds, format: .fixed(precision: 2), privacy: .public)s \
+                duration=\(clip.durationSeconds, format: .fixed(precision: 2), privacy: .public)s \
+                media=\(clip.mediaURL?.lastPathComponent ?? "none", privacy: .public) \
+                bookmark=\(clip.mediaBookmark != nil, privacy: .public) \
+                skip=\(clip.skipReason.map(String.init(describing:)) ?? "no", privacy: .public)
+                """)
         }
-        return audible
+
+        let run = document.clips.filter(\.isCaptionable)
+        let skipped = document.clips.compactMap { clip in
+            clip.skipReason.map { Omission(clipName: clip.name, reason: $0.korean) }
+        }
+        guard !run.isEmpty else {
+            if document.clips.isEmpty { throw CaptionPipelineError.noClips }
+            if let first = skipped.first {
+                throw CaptionPipelineError.everyClipFailed(
+                    count: skipped.count, firstReason: first.reason)
+            }
+            throw CaptionPipelineError.noAudibleClip
+        }
+        return (run, skipped)
     }
 }
 
 public enum CaptionPipelineError: LocalizedError, Equatable {
     case noClips
     case noAudibleClip
+    /// Nothing came back and every clip had a reason. The reasons are the message.
+    case everyClipFailed(count: Int, firstReason: String)
     case noMediaURL(String)
     case mediaMissing(URL)
     case noSpeechFound
@@ -282,6 +366,10 @@ public enum CaptionPipelineError: LocalizedError, Equatable {
             "FCPXML에서 클립을 찾지 못했습니다."
         case .noAudibleClip:
             "오디오가 있는 클립이 없습니다."
+        case let .everyClipFailed(count, firstReason):
+            count == 1
+                ? firstReason
+                : "클립 \(count)개를 모두 처리하지 못했습니다. 첫 번째 이유: \(firstReason)"
         case let .noMediaURL(name):
             "클립의 원본 미디어 경로를 찾지 못했습니다: \(name)"
         case let .mediaMissing(url):

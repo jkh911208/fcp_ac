@@ -1,5 +1,6 @@
 import AVFoundation
 import Foundation
+import os
 
 /// Pulls the audio a transcription engine needs out of the original media, with AVFoundation only
 /// — no ffmpeg, per spec §7.
@@ -23,6 +24,8 @@ public struct AudioExtractor: Sendable {
 
     public var options: Options
 
+    private static let log = Logger(subsystem: "com.jkh911208.FCPCaption", category: "audio")
+
     public init(options: Options = .whisper) {
         self.options = options
     }
@@ -43,7 +46,17 @@ public struct AudioExtractor: Sendable {
             throw AudioExtractionError.noAudioTrack(source)
         }
         let assetDuration = try await asset.load(.duration)
-        let timeRange = try clamped(range, within: assetDuration)
+
+        // Logged before the range check, because when the check fails these three numbers are the
+        // whole diagnosis and the failure is the moment they stop being available.
+        Self.log.notice("""
+            media \(source.lastPathComponent, privacy: .public): \
+            duration \(assetDuration.seconds, format: .fixed(precision: 2), privacy: .public)s, \
+            requested \(range?.start.seconds ?? 0, format: .fixed(precision: 2), privacy: .public)s \
+            +\(range?.duration.seconds ?? assetDuration.seconds, format: .fixed(precision: 2), privacy: .public)s
+            """)
+
+        let timeRange = try clamped(range, within: assetDuration, source: source)
 
         let reader = try AVAssetReader(asset: asset)
         reader.timeRange = timeRange
@@ -147,12 +160,19 @@ public struct AudioExtractor: Sendable {
             .appending(path: "\(name).wav")
     }
 
-    private func clamped(_ range: CMTimeRange?, within duration: CMTime) throws -> CMTimeRange {
+    private func clamped(_ range: CMTimeRange?, within duration: CMTime, source: URL) throws -> CMTimeRange {
         guard let range, range.duration.seconds > 0 else {
             return CMTimeRange(start: .zero, duration: duration)
         }
         let start = CMTimeMaximum(range.start, .zero)
-        guard start < duration else { throw AudioExtractionError.rangeOutsideMedia }
+        guard start < duration else {
+            throw AudioExtractionError.rangeOutsideMedia(
+                file: source.lastPathComponent,
+                start: start.seconds,
+                length: range.duration.seconds,
+                mediaDuration: duration.seconds
+            )
+        }
         let end = CMTimeMinimum(CMTimeAdd(start, range.duration), duration)
         return CMTimeRange(start: start, end: end)
     }
@@ -165,12 +185,17 @@ private final class UncheckedBox<Value>: @unchecked Sendable {
 }
 
 public enum AudioExtractionError: LocalizedError, Equatable {
+    static func seconds(_ value: TimeInterval) -> String {
+        String(format: "%.2f초", value)
+    }
+
     case noAudioTrack(URL)
     case unreadable(URL)
     case unwritable(URL)
     case readFailed(String)
     case writeFailed(String)
-    case rangeOutsideMedia
+    /// Carries the numbers, because the three of them together are the diagnosis.
+    case rangeOutsideMedia(file: String, start: TimeInterval, length: TimeInterval, mediaDuration: TimeInterval)
 
     public var errorDescription: String? {
         switch self {
@@ -184,8 +209,12 @@ public enum AudioExtractionError: LocalizedError, Equatable {
             "오디오를 읽는 중 실패했습니다. (\(detail))"
         case let .writeFailed(detail):
             "오디오를 저장하는 중 실패했습니다. (\(detail))"
-        case .rangeOutsideMedia:
-            "클립 구간이 원본 미디어 범위를 벗어났습니다."
+        case let .rangeOutsideMedia(file, start, length, mediaDuration):
+            """
+            클립이 원본 미디어보다 뒤에서 시작합니다. \(file)의 길이는 \
+            \(Self.seconds(mediaDuration))인데, 클립은 \(Self.seconds(start))부터 \
+            \(Self.seconds(length)) 동안입니다. 미디어가 프록시나 다른 파일로 바뀌었는지 확인해 주세요.
+            """
         }
     }
 }

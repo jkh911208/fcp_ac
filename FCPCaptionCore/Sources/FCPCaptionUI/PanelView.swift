@@ -184,6 +184,26 @@ public struct PanelView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+            // Named, not counted. On a long timeline a shot with no captions is invisible, and the
+            // reason is usually something the editor can act on — unmute it, or remove the retime.
+            if !finished.omitted.isEmpty {
+                DisclosureGroup {
+                    VStack(alignment: .leading, spacing: 3) {
+                        ForEach(Array(finished.omitted.enumerated()), id: \.offset) { _, omission in
+                            Text("· \(omission.clipName) — \(omission.reason)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                    .padding(.top, 2)
+                } label: {
+                    Label("클립 \(finished.omitted.count)개는 자막을 만들지 않았습니다",
+                          systemImage: "exclamationmark.circle")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
             // Two routes, and the difference matters: a caption file lands on the timeline you
             // are editing, while importing FCPXML brings a *copy* of the event and project into
             // the library. Saying which is which here saves discovering it afterwards.

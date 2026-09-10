@@ -125,10 +125,30 @@ public struct FCPXMLReader: Sendable {
         for container in containers {
             for child in container.children?.compactMap({ $0 as? XMLElement }) ?? [] {
                 guard Self.clipElements.contains(child.name ?? "") else { continue }
-                clips.append(try clip(from: child, formats: formats, assets: assets))
+                try collect(child, into: &clips, formats: formats, assets: assets)
             }
         }
         return clips
+    }
+
+    /// Takes the clip and every clip *connected* to it.
+    ///
+    /// A connected clip — a separate mic recording synced under the picture, a music bed — is a
+    /// child of the clip it hangs from, not of the spine. Reading only the spine's direct children
+    /// therefore misses it entirely, and misses it silently: in a real 121-clip project
+    /// (2026-09-09) that was 47 audible clips, 45 of them tagged `dialogue`, 2.8 minutes of
+    /// speech that no caption would ever have covered and nothing would have reported.
+    private func collect(
+        _ element: XMLElement,
+        into clips: inout [ClipRef],
+        formats: [String: FCPTime],
+        assets: [String: AssetInfo]
+    ) throws {
+        clips.append(try clip(from: element, formats: formats, assets: assets))
+        for child in element.children?.compactMap({ $0 as? XMLElement }) ?? [] {
+            guard Self.clipElements.contains(child.name ?? "") else { continue }
+            try collect(child, into: &clips, formats: formats, assets: assets)
+        }
     }
 
     private func clip(
@@ -163,8 +183,48 @@ public struct FCPXMLReader: Sendable {
             assetStart: asset?.start ?? .zero,
             assetFrameDuration: asset?.formatID.flatMap { formats[$0] },
             hasAudio: asset?.hasAudio ?? true,
+            skipReason: Self.skipReason(for: element, hasAudio: asset?.hasAudio ?? true),
             captions: try captions(in: element)
         )
+    }
+
+    /// Reasons a clip is not worth transcribing, read straight off the edit.
+    ///
+    /// Found by parsing a real 117-clip project (2026-09-09) in which five clips were retimed and
+    /// fifteen were silenced. Only one of the five retimed clips failed loudly — its start landed
+    /// past the end of the media — while the other four were quietly transcribed from the wrong
+    /// second of the file. The quiet ones are the reason this check exists.
+    private static func skipReason(for element: XMLElement, hasAudio: Bool) -> ClipRef.SkipReason? {
+        if !hasAudio { return .noAudio }
+
+        if let map = element.elements(forName: "timeMap").first {
+            // The last point gives the overall output-to-source ratio. It is recorded only to say
+            // something useful to the user; it is deliberately NOT used to map times.
+            let points = map.elements(forName: "timept").compactMap { point -> (FCPTime, FCPTime)? in
+                guard let time = try? point.attribute(forName: "time")?.stringValue.map(FCPTime.parse) ?? nil,
+                      let value = try? point.attribute(forName: "value")?.stringValue.map(FCPTime.parse) ?? nil
+                else { return nil }
+                return (time, value)
+            }
+            // A speed is only meaningful for a two-point map — one constant rate. Real projects
+            // also carry holds and ramps: a freeze frame in this export reads
+            // (0,0) (2.73,2.73) (172800,2.73) (172800,2.75), whose last point gives a "speed" of
+            // 0.0000159. Printing that as "0.00배속" is worse than printing nothing.
+            let speed: Double? = points.count == 2 ? points[1].0.seconds > 0
+                ? points[1].1.seconds / points[1].0.seconds
+                : nil : nil
+            return .retimed(speed: speed)
+        }
+
+        // FCP writes -96 dB for a muted clip. Anything at or below that is under a 16-bit noise
+        // floor, so nobody hears it and captioning it describes audio the finished video lacks.
+        if let volume = element.elements(forName: "adjust-volume").first,
+           let amount = volume.attribute(forName: "amount")?.stringValue,
+           let decibels = Double(amount.replacingOccurrences(of: "dB", with: "")),
+           decibels <= -96 {
+            return .silenced
+        }
+        return nil
     }
 
     private func captions(in clip: XMLElement) throws -> [CaptionRef] {

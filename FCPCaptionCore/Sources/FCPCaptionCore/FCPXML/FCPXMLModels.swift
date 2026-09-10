@@ -79,8 +79,43 @@ public struct ClipRef: Sendable, Equatable {
     /// The asset's own format, which may differ from the sequence's (conformed clips).
     public var assetFrameDuration: FCPTime?
     public var hasAudio: Bool
+    /// Why this clip cannot be captioned, when it cannot. Nil means it can.
+    ///
+    /// Decided while reading the document rather than while extracting audio: the reasons are
+    /// properties of the edit, and the panel should be able to say what it will skip before
+    /// anyone waits on a transcription.
+    public var skipReason: SkipReason?
     /// Captions already attached to this clip — the editor's, or ours from an earlier run.
     public var captions: [CaptionRef]
+
+    /// A clip the pipeline will not transcribe, and the reason a person would accept.
+    public enum SkipReason: Sendable, Equatable {
+        /// The clip carries a `<timeMap>` — it is retimed, so its `start` and `duration` are in
+        /// the retimed output's time base rather than the media's.
+        ///
+        /// Mapping one to the other is not a ratio: FCP's `timept` interpolation (`smooth2`) is a
+        /// curve, so a constant speed factor is right at the anchor points and wrong between them.
+        /// Guessing it produces captions that drift against the picture with nothing to show the
+        /// user that they are wrong — worse than not producing them. Supporting retimes properly
+        /// needs a fixture recorded for it, and is deliberately not attempted here.
+        case retimed(speed: Double?)
+        /// Silenced in the edit, so its dialogue is not in the finished video.
+        case silenced
+        /// The asset says it carries no audio at all.
+        case noAudio
+
+        public var korean: String {
+            switch self {
+            case let .retimed(speed):
+                let rate = speed.map { String(format: " (%.2f배속)", $0) } ?? ""
+                return "속도를 조절한 클립\(rate)이라 건너뜁니다"
+            case .silenced:
+                return "음소거된 클립이라 건너뜁니다"
+            case .noAudio:
+                return "오디오가 없는 클립입니다"
+            }
+        }
+    }
 
     public init(
         element: String,
@@ -95,6 +130,7 @@ public struct ClipRef: Sendable, Equatable {
         assetStart: FCPTime = .zero,
         assetFrameDuration: FCPTime? = nil,
         hasAudio: Bool = true,
+        skipReason: SkipReason? = nil,
         captions: [CaptionRef] = []
     ) {
         self.element = element
@@ -109,8 +145,12 @@ public struct ClipRef: Sendable, Equatable {
         self.assetStart = assetStart
         self.assetFrameDuration = assetFrameDuration
         self.hasAudio = hasAudio
+        self.skipReason = skipReason ?? (hasAudio ? nil : .noAudio)
         self.captions = captions
     }
+
+    /// Whether the pipeline will transcribe this clip.
+    public var isCaptionable: Bool { skipReason == nil }
 
     public var durationSeconds: TimeInterval { duration.seconds }
 

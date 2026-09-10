@@ -96,8 +96,27 @@ struct AudioExtractorTests {
         defer { try? FileManager.default.removeItem(at: source) }
         let range = CMTimeRange(start: CMTime(seconds: 5, preferredTimescale: 600),
                                 duration: CMTime(seconds: 1, preferredTimescale: 600))
-        await #expect(throws: AudioExtractionError.rangeOutsideMedia) {
+        // The numbers are the point of this error: they are what tells a user whether the media
+        // was swapped for a proxy or the clip is retimed.
+        await #expect {
             try await AudioExtractor().extract(from: source, range: range, to: AudioExtractor.temporaryOutputURL())
+        } throws: { error in
+            guard case let .rangeOutsideMedia(file, start, length, mediaDuration) =
+                    error as? AudioExtractionError else { return false }
+            return file == source.lastPathComponent
+                && start == 5
+                && length == 1
+                && abs(mediaDuration - 1) < 0.05
+        }
+    }
+
+    @Test("the message names the file and all three numbers")
+    func theMessageIsActionable() throws {
+        let message = try #require(AudioExtractionError.rangeOutsideMedia(
+            file: "03.mp4", start: 37.07, length: 2.73, mediaDuration: 36
+        ).errorDescription)
+        for expected in ["03.mp4", "37.07초", "2.73초", "36.00초"] {
+            #expect(message.contains(expected), "missing \(expected) in: \(message)")
         }
     }
 }

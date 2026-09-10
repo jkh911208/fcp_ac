@@ -46,6 +46,9 @@ public final class PanelModel {
         /// Captions the editor's own captions were already occupying. Shown when non-zero, because
         /// a caption missing from the timeline with no explanation reads as a bug.
         public var skipped: Int
+        /// Clips left out, and why. Same reasoning as `skipped`, one level up: on a 121-clip
+        /// project a missing shot is invisible unless the panel names it.
+        public var omitted: [CaptionPipeline.Omission]
 
         public init(
             captionCount: Int,
@@ -55,7 +58,8 @@ public final class PanelModel {
             clipCount: Int = 1,
             captionFile: String? = nil,
             captionFileBaseName: String = "자막",
-            keepsProject: Bool = false
+            keepsProject: Bool = false,
+            omitted: [CaptionPipeline.Omission] = []
         ) {
             self.captionCount = captionCount
             self.clipName = clipName
@@ -65,6 +69,7 @@ public final class PanelModel {
             self.keepsProject = keepsProject
             self.output = output
             self.skipped = skipped
+            self.omitted = omitted
         }
     }
 
@@ -165,7 +170,8 @@ public final class PanelModel {
                     clipCount: result.clips.count,
                     captionFile: result.captionFile(language: settings.language ?? "ko"),
                     captionFileBaseName: Self.fileBaseName(for: first?.name),
-                    keepsProject: result.keptInPlace
+                    keepsProject: result.keptInPlace,
+                    omitted: result.omitted
                 ))
             } catch is CancellationError {
                 // Cancelling returns to the clip you dropped, not to an empty panel: the next

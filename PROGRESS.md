@@ -337,6 +337,43 @@ telemetry — so the person who decides what leaves the machine is the person wh
 A test pins the report's rows by name, so adding a serial number or a user name fails the build
 rather than shipping quietly in everyone's reports.
 
+### What a real 121-clip project exposed (2026-09-09)
+
+A run failed with "클립 구간이 원본 미디어 범위를 벗어났습니다" and the diagnostics zip — the feature's
+first real use — carried enough to start, but not to finish: it took the user's exported FCPXML to
+find the cause. Three separate bugs came out of it, in rising order of seriousness.
+
+**One clip's failure threw away the whole run.** `try await caption(clip:)` propagated, so a single
+odd shot in 121 discarded four minutes of transcription. Clips are now attempted independently and
+what fails is reported by name. A run of exactly one clip still rethrows the original error rather
+than a summary of it, so callers keep the case they used to match on.
+
+**Retimed clips were transcribed from the wrong second.** Five clips carried a `<timeMap>`; their
+`start` is in the retimed *output's* time base, not the media's. One started past the end of its
+media and failed loudly. The other four did not — they were quietly captioned from the wrong part
+of the file, with nothing to show for it. They are skipped now, with the reason shown. Mapping them
+properly is not a ratio: `timept interp="smooth2"` is a curve, and a freeze frame in this export
+reads (0,0) (2.73,2.73) (172800,2.73) (172800,2.75) — a "speed" of 0.0000159. Guessing produces
+captions that drift with nothing to reveal that they are wrong, which is worse than not producing
+them. Real retime support needs a fixture recorded for it.
+
+**Connected clips were never read at all.** `spineClips` walked only the direct children of
+`<spine>`, and a connected clip — a separate mic recording synced under the picture — is a child of
+the clip it hangs from. In this project that was 49 clips, 47 of them audible and 45 tagged
+`dialogue`: 2.8 minutes of speech that no caption would ever have covered, with no error and no
+count to notice. The reader now descends into them; the project went from 72 clips seen to 121, and
+from 52 captionable to 99.
+
+Also skipped now: clips muted at -96 dB (13 of them here). Captioning audio the finished video does
+not contain is not a service.
+
+The diagnostics zip logs the whole clip table — element, ref, offset, start, assetStart, mediaStart,
+duration, media file, whether a bookmark is present, and the skip reason — plus the media's real
+duration next to the range asked for. The same failure now needs no XML export.
+
+`Fixtures/retimed_and_connected.fcpxml` freezes all of it, cut from that real export and validated
+against Apple's DTD.
+
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.
