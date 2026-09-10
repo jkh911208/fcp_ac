@@ -13,17 +13,21 @@ public struct PanelView: View {
     /// Collects a diagnostics zip and opens a prefilled issue. The string is whatever context the
     /// panel already has — a failure message, or empty when the user starts the report themselves.
     var onReportProblem: ((String) -> Void)?
+    /// Opens a link in the browser. The panel never downloads or installs anything itself.
+    var onOpenURL: ((URL) -> Void)?
 
     public init(
         model: PanelModel,
         onOpenInFinalCut: @escaping (URL) -> Void,
         onSaveCaptionFile: ((String, String) -> Void)? = nil,
-        onReportProblem: ((String) -> Void)? = nil
+        onReportProblem: ((String) -> Void)? = nil,
+        onOpenURL: ((URL) -> Void)? = nil
     ) {
         self.model = model
         self.onOpenInFinalCut = onOpenInFinalCut
         self.onSaveCaptionFile = onSaveCaptionFile
         self.onReportProblem = onReportProblem
+        self.onOpenURL = onOpenURL
     }
 
     public var body: some View {
@@ -32,6 +36,9 @@ public struct PanelView: View {
         // and the panel had a screenful of empty space under the button anyway.
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
+                if let update = model.availableUpdate, let onOpenURL {
+                    updateRow(update, open: onOpenURL)
+                }
                 content
                 Divider()
                     .padding(.top, 2)
@@ -250,6 +257,29 @@ public struct PanelView: View {
                 wideButton("이 오류 신고하기") { onReportProblem(message) }
             }
         }
+    }
+
+    /// Says a version exists and offers the page. It cannot install: the extension is sandboxed
+    /// and cannot replace the app in /Applications, and an updater that pretended otherwise would
+    /// fail somewhere the user could do nothing about.
+    private func updateRow(_ update: UpdateCheck.Release, open: @escaping (URL) -> Void) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.down.circle")
+                .foregroundStyle(.tint)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("새 버전 \(update.version)")
+                    .font(.callout)
+                Text("받아서 응용 프로그램에 덮어쓰면 됩니다")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer(minLength: 8)
+            Button("받기") { open(update.url) }
+                .controlSize(.small)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(RoundedRectangle(cornerRadius: 8).fill(.quaternary))
     }
 
     private var reportRow: some View {

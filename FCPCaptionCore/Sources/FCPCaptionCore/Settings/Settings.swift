@@ -12,6 +12,12 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
     public var captions: CaptionSplitOptions
     public var style: CaptionStyle
     public var form: FCPXMLWriter.Form
+    /// Whether to ask GitHub if a newer release exists.
+    ///
+    /// The only network request this app makes besides the model download, and the only reason the
+    /// "no network calls" line in the README needs a comma. Unauthenticated, no identifier, and
+    /// off if the user says so.
+    public var checksForUpdates: Bool
 
     public init(
         model: WhisperModel = .default,
@@ -19,7 +25,8 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
         language: String? = "ko",
         captions: CaptionSplitOptions = .default,
         style: CaptionStyle = .default,
-        form: FCPXMLWriter.Form = .caption
+        form: FCPXMLWriter.Form = .caption,
+        checksForUpdates: Bool = true
     ) {
         self.model = model
         self.engine = engine
@@ -27,6 +34,7 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
         self.captions = captions
         self.style = style
         self.form = form
+        self.checksForUpdates = checksForUpdates
     }
 
     // Settings stored by an older build have no style; decoding must not fail over it.
@@ -38,7 +46,8 @@ public struct FCPCaptionSettings: Codable, Sendable, Equatable {
             language: try container.decodeIfPresent(String.self, forKey: .language),
             captions: try container.decodeIfPresent(CaptionSplitOptions.self, forKey: .captions) ?? .default,
             style: try container.decodeIfPresent(CaptionStyle.self, forKey: .style) ?? .default,
-            form: try container.decodeIfPresent(FCPXMLWriter.Form.self, forKey: .form) ?? .caption
+            form: try container.decodeIfPresent(FCPXMLWriter.Form.self, forKey: .form) ?? .caption,
+            checksForUpdates: try container.decodeIfPresent(Bool.self, forKey: .checksForUpdates) ?? true
         )
     }
 

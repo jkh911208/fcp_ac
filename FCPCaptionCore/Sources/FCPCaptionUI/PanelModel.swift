@@ -74,6 +74,12 @@ public final class PanelModel {
     }
 
     public private(set) var state: State = .waiting
+    /// A published release newer than this build, once we know of one.
+    ///
+    /// Starts nil and stays nil unless there is genuinely something newer — there is no "checking…"
+    /// row and no "you are up to date" row, because neither is news. Nothing is painted before the
+    /// answer arrives, so nothing flickers when it does.
+    public private(set) var availableUpdate: UpdateCheck.Release?
     /// Saved on every change, so closing the panel mid-edit does not lose the setting.
     public var settings: FCPCaptionSettings {
         didSet {
@@ -87,6 +93,9 @@ public final class PanelModel {
     private var hasTimeline = false
     private var task: Task<Void, Never>?
 
+    /// Injected so the panel can be tested and previewed without reaching the network.
+    private let lookUpUpdate: @Sendable (String) async -> UpdateCheck.Release?
+    private let currentVersion: String
     private let makePipeline: @Sendable (FCPCaptionSettings) -> CaptionPipeline
     private let deliver: @Sendable (Data, ClipRef) throws -> URL
     private let store: SettingsStore?
@@ -112,12 +121,22 @@ public final class PanelModel {
         makePipeline: @escaping @Sendable (FCPCaptionSettings) -> CaptionPipeline,
         deliver: @escaping @Sendable (Data, ClipRef) throws -> URL,
         store: SettingsStore? = nil,
-        settings: FCPCaptionSettings = .default
+        settings: FCPCaptionSettings = .default,
+        currentVersion: String = "0.0.0",
+        lookUpUpdate: @escaping @Sendable (String) async -> UpdateCheck.Release? = { _ in nil }
     ) {
+        self.currentVersion = currentVersion
+        self.lookUpUpdate = lookUpUpdate
         self.makePipeline = makePipeline
         self.deliver = deliver
         self.store = store
         self.settings = store?.load() ?? settings
+    }
+
+    /// Asks once, in the background, and only if the user has left the setting on.
+    public func checkForUpdate() async {
+        guard settings.checksForUpdates, availableUpdate == nil else { return }
+        availableUpdate = await lookUpUpdate(currentVersion)
     }
 
     // MARK: - Input

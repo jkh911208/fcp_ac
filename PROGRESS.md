@@ -374,6 +374,24 @@ duration next to the range asked for. The same failure now needs no XML export.
 `Fixtures/retimed_and_connected.fcpxml` freezes all of it, cut from that real export and validated
 against Apple's DTD.
 
+### Telling people a new version exists (2026-09-09, user's decision)
+
+The panel asks GitHub's public releases endpoint whether anything newer is published, and if so
+shows one row with a link. It cannot install: the extension is sandboxed and cannot replace
+`/Applications/FCPCaption.app`, and the host app the user would have to launch to do it is the app
+they never launch. An updater that pretended otherwise would fail where nobody could act on it.
+
+Sparkle was the alternative and was turned down: a second SPM dependency (which needs approval),
+EdDSA keys and an appcast to generate in the release script, and the same sandbox problem at the
+end of it.
+
+**This changes a promise the README made** — "no network calls at all except model downloads" —
+so the README, the Korean README and the site now say there are two, name them, and say what each
+carries. It is a setting, default on, and nothing about the user is in the request: no account, no
+identifier, no body. Version comparison is numeric, so 0.1.10 sorts after 0.1.9, and a version it
+cannot parse is never called newer — a missed notification beats offering an "update" that is
+older.
+
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.

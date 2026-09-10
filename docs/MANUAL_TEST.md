@@ -79,6 +79,13 @@ Use a real edit, not a single clip on a spine.
       must not be skipped. Count the captions against the shots that actually have speech
 - [ ] One bad clip does not lose the run: the rest are captioned
 
+## 2e. The update notice
+
+- [ ] With a newer release published, opening the panel shows one row naming the version
+- [ ] **받기** opens the releases page in a browser — the panel downloads and installs nothing
+- [ ] Turning the setting off and reopening the panel shows no row and makes no request
+- [ ] Offline, the panel opens normally with no error and no row
+
 ## 3. Transcription — 1 minute
 
 - [ ] Progress advances through 오디오 추출 → 음성을 전사하는 중, and never goes backwards
