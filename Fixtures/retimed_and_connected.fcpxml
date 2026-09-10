@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+
+<fcpxml version="1.14"><resources><format id="r1" name="FFVideoFormat3840x2160p60" frameDuration="100/6000s" width="3840" height="2160" colorSpace="1-1-1 (Rec. 709)" />
+        <asset id="r2" name="DJI_20260904191243_0147_D" uid="7B349088FE06DDF01F840B2BE86FEEEC" start="3715231520/60000s" duration="66068002/60000s" hasVideo="1" format="r3" hasAudio="1" videoSources="1" audioSources="2" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="7B349088FE06DDF01F840B2BE86FEEEC" src="file:///Fixtures/DJI_20260904191243_0147_D.MP4">
+                </media-rep>
+            </asset>
+        <format id="r3" name="FFVideoFormat1080p5994" frameDuration="1001/60000s" width="1920" height="1080" colorSpace="1-1-1 (Rec. 709)" />
+        <effect id="r4" name="Custom" uid=".../Titles.localized/Build In:Out.localized/Custom.localized/Custom.moti" />
+        <asset id="r5" name="On My Own - Bail Bonds" uid="3D2DB507F2D3640D66CD80106EFCC0C7" start="0s" duration="9030386/44100s" hasAudio="1" audioSources="1" audioChannels="2" audioRate="44100">
+            <media-rep kind="original-media" sig="3D2DB507F2D3640D66CD80106EFCC0C7" src="file:///Fixtures/On%20My%20Own%20-%20Bail%20Bonds.mp3">
+                </media-rep>
+            </asset>
+        <format id="r6" name="FFVideoFormatRateUndefined" />
+        <asset id="r7" name="IMG_6081" uid="958761D1265A3EB95C39FEA36359DA92" start="0s" duration="5632/600s" hasVideo="1" format="r8" hasAudio="1" videoSources="1" audioSources="1" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="958761D1265A3EB95C39FEA36359DA92" src="file:///Fixtures/IMG_6081.MOV">
+                </media-rep>
+            </asset>
+        <format id="r8" name="FFVideoFormat1080p60" frameDuration="100/6000s" width="1920" height="1080" colorSpace="1-1-1 (Rec. 709)" />
+        <format id="r14" name="FFVideoFormat720p24" frameDuration="100/2400s" width="1280" height="720" colorSpace="1-1-1 (Rec. 709)" />
+        <asset id="r17" name="01-8" uid="5D1A630FFC78C85B3C2C4E15ABBA72A7" start="0s" duration="838054/48000s" hasAudio="1" audioSources="1" audioChannels="1" audioRate="48000">
+            <media-rep kind="original-media" sig="5D1A630FFC78C85B3C2C4E15ABBA72A7" src="file:///Fixtures/01-8.wav">
+                </media-rep>
+            </asset>
+        <asset id="r18" name="03" uid="753F6BB47B58A4D04C73847E8BB60362" start="0s" duration="36s" hasVideo="1" format="r14" hasAudio="1" videoSources="1" audioSources="1" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="753F6BB47B58A4D04C73847E8BB60362" src="file:///Fixtures/03.mp4">
+                </media-rep>
+            </asset>
+        <asset id="r19" name="IMG_6209" uid="ABE4DEA57268824B573D742024099556" start="0s" duration="0s" hasVideo="1" format="r20" videoSources="1">
+            <media-rep kind="original-media" sig="ABE4DEA57268824B573D742024099556" src="file:///Fixtures/IMG_6209.JPG">
+                </media-rep>
+            </asset>
+        <format id="r20" name="FFVideoFormatRateUndefined" width="1408" height="768" colorSpace="1-13-1" />
+        <asset id="r23" name="피테리05" uid="62AEFE28E2D5CDE4A9DB57A3E19F999D" start="0s" duration="10s" hasVideo="1" format="r14" hasAudio="1" videoSources="1" audioSources="1" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="62AEFE28E2D5CDE4A9DB57A3E19F999D" src="file:///Fixtures/%E1%84%91%E1%85%B5%E1%84%90%E1%85%A6%E1%84%85%E1%85%B505.mp4">
+                </media-rep>
+            </asset>
+        </resources><library><event name="Fixture"><project name="retimed, muted and connected clips"><sequence format="r1" duration="850560000/1536000s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k"><spine><asset-clip ref="r2" offset="0s" name="DJI_20260904191243_0147_D" start="3715340629/60000s" duration="6195200/1536000s" format="r3" tcFormat="DF" audioRole="dialogue">
+                            <conform-rate srcFrameRate="59.94" />
+                            <adjust-transform position="-35.5825 9.7999" scale="1.52 1.52" />
+                            <asset-clip ref="r5" lane="-1" offset="1238516279/20000s" name="On My Own - Bail Bonds" duration="12530826/720000s" format="r6" audioRole="music">
+                                <adjust-volume amount="-3dB">
+                                    <param name="amount">
+                                        <fadeOut type="easeIn" duration="2805022/720000s" />
+                                    </param>
+                                </adjust-volume>
+                            </asset-clip>
+                        </asset-clip>
+                        <asset-clip ref="r7" offset="6195200/1536000s" name="IMG_6081" start="23900/6000s" duration="23500/6000s" format="r8" tcFormat="NDF" audioRole="dialogue">
+                            <adjust-volume amount="-96dB" />
+                        </asset-clip>
+                        <asset-clip ref="r18" offset="48486400/1536000s" name="03" start="25472256/1536000s" duration="2995200/1536000s" format="r14" tcFormat="NDF" audioRole="dialogue">
+                            <conform-rate scaleEnabled="0" srcFrameRate="24" />
+                            <timeMap>
+                                <timept time="0s" value="0s" interp="smooth2" />
+                                <timept time="72s" value="36s" interp="smooth2" />
+                            </timeMap>
+                            <adjust-volume amount="-96dB" />
+                            <video ref="r19" lane="1" offset="103301/6000s" name="IMG_6209" start="21595600/6000s" duration="13644800/1536000s">
+                                <adjust-crop mode="trim">
+                                    <trim-rect left="41.814" right="18.3954" />
+                                </adjust-crop>
+                                <adjust-transform position="31.9189 -4.47331" scale="0.6297 0.6297" />
+                            </video>
+                            <asset-clip ref="r17" lane="-1" offset="406659840/23040000s" name="01-8" start="117362560/23040000s" duration="61056000/23040000s" format="r6" audioRole="dialogue">
+                                <adjust-volume amount="12dB" />
+                                <audio-channel-source srcCh="1" role="dialogue.dialogue-1" />
+                            </asset-clip>
+                            </asset-clip>
+                        <asset-clip ref="r23" offset="75852800/1536000s" name="피테리05" start="1200/6000s" duration="2841600/1536000s" format="r14" tcFormat="NDF" audioRole="dialogue">
+                            <conform-rate scaleEnabled="0" srcFrameRate="24" />
+                            <analysis-marker start="25/12s" duration="97280/12288s">
+                                <shot-type value="wideShot" />
+                                <shot-type value="group" />
+                            </analysis-marker>
+                        </asset-clip>
+                        </spine></sequence></project></event></library></fcpxml>

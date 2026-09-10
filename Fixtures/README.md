@@ -65,3 +65,18 @@ offers every one, so the app has to be able to write titles as well as captions.
 | Type scale | **`fontSize="100"`**, against a caption's `13`. The two are not on the same scale, so a size cannot simply be carried across |
 | Internal `start` | `216216000/60000s` — exactly 216000 frames, i.e. one hour of timecode. A caption's was 215784 frames. Different conventions for the same idea |
 | Defaults FCP wrote | `font="Helvetica Neue" fontSize="100" fontColor="1 1 1 1" bold="1" alignment="center" lineSpacing="22"` |
+
+## `retimed_and_connected.fcpxml`
+
+Cut from a real 121-clip project the user edited (2026-09-09), scrubbed of bookmarks and of every
+real path, and validated against Apple's `FCPXMLv1_14.dtd`. It holds one of each thing that had
+gone wrong silently:
+
+- a **retimed** `asset-clip` with a two-point `<timeMap>` — its `start` is in the retimed output's
+  time base, so reading it as media time asks for a second that is not in the file
+- a **muted** clip (`adjust-volume amount="-96dB"`)
+- a clip with a **connected clip beneath it**, which the reader used to never see at all
+- an ordinary clip, so the tests can prove the others are excluded and this one is not
+
+In the source project those cases were 9 retimed, 13 muted, and 49 connected clips of which 47 were
+audible — 45 tagged `dialogue`. None of it was reported to anyone.

@@ -68,6 +68,17 @@ cannot read the project at all drops perfectly.
 - [ ] A GitHub issue opens with the environment table already in the body
 - [ ] After a failure, **이 오류 신고하기** puts the error message into the report
 
+## 2d. A project with awkward clips
+
+Use a real edit, not a single clip on a spine.
+
+- [ ] A project containing a retimed (slow-motion) clip finishes, and names that clip under
+      "클립 N개는 자막을 만들지 않았습니다"
+- [ ] A muted clip is listed there too, not captioned
+- [ ] **Connected clips are captioned** — audio synced under the picture on lane -1 is dialogue and
+      must not be skipped. Count the captions against the shots that actually have speech
+- [ ] One bad clip does not lose the run: the rest are captioned
+
 ## 3. Transcription — 1 minute
 
 - [ ] Progress advances through 오디오 추출 → 음성을 전사하는 중, and never goes backwards
