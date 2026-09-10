@@ -46,9 +46,15 @@ Nothing is uploaded and nothing is re-encoded.
 
 ## Privacy
 
-No telemetry, no analytics, no account, no server. The app makes exactly one kind of network
-request — downloading the transcription model, once — and none after that. Your audio and your
-transcript never leave the Mac.
+No telemetry, no analytics, no account, no server. **Your audio and your transcript never leave
+the Mac** — transcription is entirely local, and nothing about your projects is ever sent anywhere.
+
+The app makes exactly two kinds of network request, and both are worth stating plainly:
+
+- **The model download**, once per model.
+- **An update check** — an unauthenticated `GET` to GitHub's public releases endpoint when the
+  panel opens, carrying no account, no identifier and no data about you. It is a setting, and you
+  can turn it off. It cannot install anything; it says a version exists and offers the page.
 
 ## Captions or titles
 

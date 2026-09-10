@@ -52,7 +52,8 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 },
                 onReportProblem: { note in
                     MainActor.assumeIsolated { Self.reportProblem(note: note) }
-                }
+                },
+                onOpenURL: { url in NSWorkspace.shared.open(url) }
             ))
             panel.translatesAutoresizingMaskIntoConstraints = false
             dropView.addSubview(panel)
@@ -75,6 +76,9 @@ final class FCPCaptionExtensionViewController: NSViewController {
         super.viewDidAppear()
         HostContext.refresh()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { HostContext.refresh() }
+        // Off the main thread's critical path and asked at most once per panel: the model returns
+        // immediately if it already has an answer or if the user turned the check off.
+        if let model { Task { await model.checkForUpdate() } }
     }
 
     override func viewDidLoad() {
@@ -89,6 +93,11 @@ final class FCPCaptionExtensionViewController: NSViewController {
     }
 
     // MARK: - Wiring
+
+    /// What this build calls itself, for the update check and the bug report.
+    static var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0"
+    }
 
     @MainActor
     private static func makeModel() -> PanelModel {
@@ -106,7 +115,9 @@ final class FCPCaptionExtensionViewController: NSViewController {
                 )
             },
             deliver: { document, clip in try FinalCutPro.write(document, clipName: clip.name) },
-            store: .shared
+            store: .shared,
+            currentVersion: version,
+            lookUpUpdate: { current in await UpdateCheck().newerRelease(than: current) }
         )
     }
 

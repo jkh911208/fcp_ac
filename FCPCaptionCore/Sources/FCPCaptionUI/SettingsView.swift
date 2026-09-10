@@ -33,6 +33,17 @@ public struct SettingsView: View {
             section("자막 모양") { CaptionStyleView(style: $settings.style) }
             Divider()
             advanced
+            Divider()
+            updates
+        }
+    }
+
+    /// Named plainly, and the note says exactly what leaves the Mac. "이 앱은 서버가 없습니다"
+    /// stops being true the moment something is vague here.
+    private var updates: some View {
+        section("업데이트") {
+            Toggle("새 버전이 나오면 알려주기", isOn: $settings.checksForUpdates)
+            note("패널을 열 때 GitHub에 새 릴리스가 있는지 한 번 물어봅니다. 계정도 식별자도 보내지 않고, 내려받거나 설치하지는 않습니다.")
         }
     }
 

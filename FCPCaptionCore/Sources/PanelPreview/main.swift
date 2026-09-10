@@ -44,9 +44,21 @@ func run() {
     func model(_ state: PanelModel.State) -> PanelModel {
         let model = PanelModel(
             makePipeline: { _ in fatalError("preview only") },
-            deliver: { _, _ in URL(filePath: "/tmp/preview.fcpxml") }
+            deliver: { _, _ in URL(filePath: "/tmp/preview.fcpxml") },
+            currentVersion: "0.1.2",
+            lookUpUpdate: { _ in
+                .init(version: "0.1.3",
+                      url: URL(string: "https://github.com/jkh911208/fcp_ac/releases/latest")!)
+            }
         )
         model.setStateForPreview(state)
+        // Awaited synchronously so the render has the answer; the panel does this in the
+        // background, where nothing is painted until it arrives.
+        let semaphore = DispatchSemaphore(value: 0)
+        Task { @MainActor in await model.checkForUpdate(); semaphore.signal() }
+        while semaphore.wait(timeout: .now()) == .timedOut {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.01))
+        }
         return model
     }
 
@@ -74,7 +86,7 @@ func run() {
     for (name, state) in states {
         render(
             PanelView(model: model(state), onOpenInFinalCut: { _ in }, onSaveCaptionFile: { _, _ in },
-                      onReportProblem: { _ in }),
+                      onReportProblem: { _ in }, onOpenURL: { _ in }),
             to: directory.appending(path: "panel-\(name)-\(appearance == .darkAqua ? "dark" : "light").png"),
             appearance: appearance,
             height: 2400
