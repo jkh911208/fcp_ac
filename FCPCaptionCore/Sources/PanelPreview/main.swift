@@ -92,6 +92,20 @@ func run() {
             height: 2400
         )
     }
+
+    // The settings on their own, once as shipped and once with the caption background removed,
+    // so a change to the style controls can be looked at without hunting through a panel render.
+    let suffix = appearance == .darkAqua ? "dark" : "light"
+    var noBackground = FCPCaptionSettings()
+    noBackground.style.backgroundColor = .clear
+    for (name, settings) in [("default", FCPCaptionSettings()), ("no-background", noBackground)] {
+        render(
+            ScrollView { SettingsView(settings: .constant(settings)).padding(14) },
+            to: directory.appending(path: "settings-\(name)-\(suffix).png"),
+            appearance: appearance,
+            height: 2400
+        )
+    }
 }
 
 run()
