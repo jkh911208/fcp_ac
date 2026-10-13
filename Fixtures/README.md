@@ -66,6 +66,25 @@ offers every one, so the app has to be able to write titles as well as captions.
 | Internal `start` | `216216000/60000s` — exactly 216000 frames, i.e. one hour of timecode. A caption's was 215784 frames. Different conventions for the same idea |
 | Defaults FCP wrote | `font="Helvetica Neue" fontSize="100" fontColor="1 1 1 1" bold="1" alignment="center" lineSpacing="22"` |
 
+## `title_no_background.fcpxml`
+
+Exported from Final Cut Pro (2026-10-13): a Subtitle title added by hand, with **Background
+Opacity** set to 0% in the inspector's Title tab (Published Parameters). Same redactions as above,
+and one cut: the source project also carried fifteen titles this app had written — the user's own
+transcript — which were removed. Nothing in the kept title was touched.
+
+Captured because clearing `text-style`'s `backgroundColor` did **not** remove a title's box in real
+FCP: the Subtitle template draws its own rounded box, 85% opaque by default, and ignores it.
+
+### What it settled
+
+| Question | Answer from this file |
+|---|---|
+| How the box is cleared | `<param name="Background Opacity" key="9999/3336674837/3336685305/3336678548/1/200/202" value="0"/>` — a Motion parameter path, which can only be copied, never derived |
+| Where it goes | a child of `<title>`, **before** `<text>` |
+| What a default title carries | no such parameter — `title_subtitle.fcpxml` has none — so it is written only when the box is off |
+| What FCP adds on re-export | a run of the template's other parameters (margins, alignment, animation). Not needed on import: the titles this app wrote without them rendered fine |
+
 ## `retimed_and_connected.fcpxml`
 
 Cut from a real 121-clip project the user edited (2026-09-09), scrubbed of bookmarks and of every

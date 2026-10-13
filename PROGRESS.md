@@ -401,10 +401,16 @@ formats already carry (`backgroundColor="0 0 0 0"` in FCPXML, `tts:backgroundCol
 iTT), and unticking it brings the chosen colour back opaque. The well stays in place, dimmed, so the
 rows below don't jump. Tested in `CaptionStyleBackgroundTests`, including Apple's DTD.
 
-**Not yet verified in Final Cut Pro.** The fixtures only contain FCP's own opaque
-`backgroundColor="0 0 0 1"`; whether FCP renders alpha 0 as no box — for captions, for the .itt
-route and for titles — is `docs/MANUAL_TEST.md` §2f. A real export of a caption whose background
-opacity was set to 0 inside FCP would settle what FCP itself writes.
+**Titles were the surprise (tested in FCP, 2026-10-13).** Delivered as titles, the box stayed:
+the Subtitle template draws its own rounded box, 85% opaque, and ignores `text-style`'s background
+entirely. It goes only when the template's **Background Opacity** parameter is 0. The user cleared
+it by hand in FCP and exported the result (`Fixtures/title_no_background.fcpxml`); the writer now
+copies that exact `<param>` into every title when 배경 없음 is ticked, and writes nothing when it is
+not, so the template keeps its own default.
+
+**Still to verify in Final Cut Pro** (`docs/MANUAL_TEST.md` §2f): that titles written this way come
+in with no box, and that **captions** with a transparent `backgroundColor` do too — the caption
+route has not been tried yet. Outline width 3 did not show on the titles either; not yet looked into.
 
 ## Next
 
