@@ -428,7 +428,7 @@ for the stapled ticket on the app inside. Needs the **Developer ID Installer** c
 2026-10-21. README, README.ko, the site and `docs/RELEASE.md` say two steps now. The site prefers
 the `.pkg` asset and falls back to a `.dmg` for old releases.
 
-A signed (not notarized) package was built end to end on this Mac. **Not yet verified:** that the
+Released as **0.1.5**, the first `.pkg`. A signed (not notarized) package was first built end to end on this Mac. **Not yet verified:** that the
 extension appears on another Mac without launching the app, and survives an update —
 `docs/MANUAL_TEST.md` §2g. That needs a published, notarized release.
 
