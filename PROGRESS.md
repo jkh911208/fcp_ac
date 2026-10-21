@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-10-13 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+**Last updated:** 2026-10-21 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
 Signed, notarized and published from this Mac; GitHub only hosts the file.
@@ -408,7 +408,8 @@ it by hand in FCP and exported the result (`Fixtures/title_no_background.fcpxml`
 copies that exact `<param>` into every title when 배경 없음 is ticked, and writes nothing when it is
 not, so the template keeps its own default.
 
-**Still to verify in Final Cut Pro** (`docs/MANUAL_TEST.md` §2f): that titles written this way come
+**Released as 0.1.4 before that check (2026-10-21, user's decision)**, so it can be installed on
+another Mac. **Still to verify in Final Cut Pro** (`docs/MANUAL_TEST.md` §2f): that titles written this way come
 in with no box, and that **captions** with a transparent `backgroundColor` do too — the caption
 route has not been tried yet. Outline width 3 did not show on the titles either; not yet looked into.
 
