@@ -86,6 +86,14 @@ Use a real edit, not a single clip on a spine.
 - [ ] Turning the setting off and reopening the panel shows no row and makes no request
 - [ ] Offline, the panel opens normally with no error and no row
 
+## 2f. A caption with no background
+
+- [ ] Ticking **배경 없음** next to 배경색 dims the colour well and the preview loses its box
+- [ ] Captions delivered as **FCPXML** show no background box over the video
+- [ ] Captions delivered as a **caption file (.itt)** show no background box over the video
+- [ ] **Titles** show no background box either
+- [ ] Unticking it brings back the colour that was chosen before, opaque
+
 ## 3. Transcription — 1 minute
 
 - [ ] Progress advances through 오디오 추출 → 음성을 전사하는 중, and never goes backwards

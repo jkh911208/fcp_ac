@@ -89,7 +89,18 @@ struct CaptionStyleView: View {
     private var colors: some View {
         VStack(alignment: .leading, spacing: 8) {
             colorRow("글자색", $style.fontColor)
-            colorRow("배경색", $style.backgroundColor)
+            // Zero opacity is "no background", but the opacity slider sits at the bottom of the
+            // system colour panel where nobody finds it — so it gets its own checkbox. The well
+            // stays where it is, dimmed, so ticking the box doesn't shift the rows below.
+            HStack(spacing: 12) {
+                colorRow("배경색", $style.backgroundColor)
+                    .disabled(!style.drawsBackground)
+                Toggle("없음", isOn: Binding(
+                    get: { !style.drawsBackground },
+                    set: { style.drawsBackground = !$0 }
+                ))
+                .toggleStyle(.checkbox)
+            }
         }
     }
 

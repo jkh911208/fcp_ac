@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-09-09 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+**Last updated:** 2026-10-21 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
 Signed, notarized and published from this Mac; GitHub only hosts the file.
@@ -391,6 +391,27 @@ carries. It is a setting, default on, and nothing about the user is in the reque
 identifier, no body. Version comparison is numeric, so 0.1.10 sorts after 0.1.9, and a version it
 cannot parse is never called newer — a missed notification beats offering an "update" that is
 older.
+
+### Captions with no background (2026-10-13, user's request)
+
+The background colour could already be removed — its colour well takes opacity — but the opacity
+slider sits at the bottom of the system colour panel, where nobody finds it. **배경 없음** is now a
+checkbox next to 배경색. It is not a new setting: it sets the background's alpha to 0, which both
+formats already carry (`backgroundColor="0 0 0 0"` in FCPXML, `tts:backgroundColor="#00000000"` in
+iTT), and unticking it brings the chosen colour back opaque. The well stays in place, dimmed, so the
+rows below don't jump. Tested in `CaptionStyleBackgroundTests`, including Apple's DTD.
+
+**Titles were the surprise (tested in FCP, 2026-10-13).** Delivered as titles, the box stayed:
+the Subtitle template draws its own rounded box, 85% opaque, and ignores `text-style`'s background
+entirely. It goes only when the template's **Background Opacity** parameter is 0. The user cleared
+it by hand in FCP and exported the result (`Fixtures/title_no_background.fcpxml`); the writer now
+copies that exact `<param>` into every title when 배경 없음 is ticked, and writes nothing when it is
+not, so the template keeps its own default.
+
+**Released as 0.1.4 before that check (2026-10-21, user's decision)**, so it can be installed on
+another Mac. **Still to verify in Final Cut Pro** (`docs/MANUAL_TEST.md` §2f): that titles written this way come
+in with no box, and that **captions** with a transparent `backgroundColor` do too — the caption
+route has not been tried yet. Outline width 3 did not show on the titles either; not yet looked into.
 
 ## Next
 

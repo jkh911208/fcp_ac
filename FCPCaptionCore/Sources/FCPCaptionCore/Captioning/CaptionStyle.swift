@@ -122,6 +122,17 @@ public struct CaptionStyle: Sendable, Equatable, Codable {
 
     public static let `default` = CaptionStyle()
 
+    /// Whether the caption sits on a background box. "No background" is a fully transparent
+    /// background colour — both formats carry alpha — so turning it off keeps the colour, and
+    /// turning it back on brings that colour back opaque.
+    public var drawsBackground: Bool {
+        get { backgroundColor.alpha > 0 }
+        set {
+            guard newValue != drawsBackground else { return }
+            backgroundColor.alpha = newValue ? 1 : 0
+        }
+    }
+
     /// The font Final Cut Pro uses for a Korean caption, unless overridden.
     public var fcpxmlFontName: String { fontName ?? ".Apple SD Gothic NeoI" }
 

@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+
+<fcpxml version="1.14">
+    <resources>
+        <format id="r1" name="FFVideoFormat3840x2160p5994" frameDuration="1001/60000s" width="3840" height="2160" colorSpace="1-1-1 (Rec. 709)"/>
+        <asset id="r2" name="DJI_20260925170624_0044_D" uid="30C66F0C582EFB5038D8E2CC9002F29F" start="2634964332/60000s" duration="3760757/60000s" hasVideo="1" format="r3" hasAudio="1" videoSources="1" audioSources="2" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="30C66F0C582EFB5038D8E2CC9002F29F" src="file:///Users/example/Movies/DJI_20260925170624_0044_D.MP4">
+                <bookmark>REDACTED-SECURITY-SCOPED-BOOKMARK</bookmark>
+            </media-rep>
+            <metadata>
+                <md key="com.apple.proapps.studio.rawToLogConversion" value="0"/>
+                <md key="com.apple.proapps.spotlight.kMDItemProfileName" value="HD (1-1-1)"/>
+                <md key="com.apple.proapps.studio.cameraISO" value="0"/>
+                <md key="com.apple.proapps.studio.cameraColorTemperature" value="0"/>
+                <md key="com.apple.proapps.spotlight.kMDItemCodecs">
+                    <array>
+                        <string>HEVC</string>
+                        <string>MPEG-4 AAC</string>
+                    </array>
+                </md>
+                <md key="com.apple.proapps.mio.ingestDate" value="2026-10-13 16:20:28 -0500"/>
+            </metadata>
+        </asset>
+        <format id="r3" name="FFVideoFormat1080p5994" frameDuration="1001/60000s" width="1920" height="1080" colorSpace="1-1-1 (Rec. 709)"/>
+        <effect id="r4" name="Subtitle" uid=".../Titles.localized/Subtitles.localized/Subtitle.localized/Subtitle.moti"/>
+    </resources>
+    <library location="file:///Users/example/Movies/amazon.fcpbundle/">
+        <event name="10-13-26 1" uid="F75FD778-36DB-4D05-9ECD-972065FD8903">
+            <project name="test" uid="F9C0B698-0E2E-4B08-8FE7-747B0E3D628F" modDate="2026-10-13 17:35:22 -0500">
+                <sequence format="r1" duration="3760757/60000s" tcStart="0s" tcFormat="DF" audioLayout="stereo" audioRate="48k">
+                    <spine>
+                        <asset-clip ref="r2" offset="0s" name="DJI_20260925170624_0044_D" start="2634964332/60000s" duration="3760757/60000s" format="r3" tcFormat="DF" audioRole="dialogue">
+                            <title ref="r4" lane="1" offset="2635054422/60000s" name="Subtitle" start="215999784/60000s" duration="300300/60000s">
+                                <param name="Layout Method" key="9999/3336674837/3336674846/2/314" value="1 (Paragraph)"/>
+                                <param name="Left Margin" key="9999/3336674837/3336674846/2/323" value="-1680"/>
+                                <param name="Right Margin" key="9999/3336674837/3336674846/2/324" value="1680"/>
+                                <param name="Top Margin" key="9999/3336674837/3336674846/2/325" value="840"/>
+                                <param name="Bottom Margin" key="9999/3336674837/3336674846/2/326" value="-840"/>
+                                <param name="Alignment" key="9999/3336674837/3336674846/2/354/3336617498/401" value="1 (Center)"/>
+                                <param name="Line Spacing" key="9999/3336674837/3336674846/2/354/3336617498/404" value="18"/>
+                                <param name="Anchor Point" key="9999/3336674837/3336674846/2/357" value="1 (Word)"/>
+                                <param name="Auto-Shrink" key="9999/3336674837/3336674846/2/370" value="3 (To All Margins)"/>
+                                <param name="Alignment" key="9999/3336674837/3336674846/2/373" value="0 (Left) 2 (Bottom)"/>
+                                <param name="Anchor Position" key="9999/3336674837/3336674846/2/375" value="1 (Center)"/>
+                                <param name="Color" key="9999/3336674837/3336674846/4/3336675231/1007/1008" value="0.5 0.5 0.5"/>
+                                <param name="Animate" key="9999/3336674837/3336674846/4/3336675231/201/203" value="2 (Word)"/>
+                                <param name="Spread" key="9999/3336674837/3336674846/4/3336675231/201/204" value="0"/>
+                                <param name="Apply Speed" key="9999/3336674837/3336674846/4/3336675231/201/211" value="2 (Per Object)"/>
+                                <param name="Range" key="9999/3336674837/3336674846/4/3336675231/201/229/230" value="4 (Word)"/>
+                                <param name="End Index" key="9999/3336674837/3336674846/4/3336675231/201/229/232" value="1000"/>
+                                <param name="Source Object" key="9999/3336674837/3336674846/4/3336698814/201" value="3336674846"/>
+                                <param name="Source Object" key="9999/3336674837/3336674846/4/3337240859/201" value="3337240802"/>
+                                <param name="Custom Mix" key="9999/3336674837/3336674846/4/3337240859/207" value="0"/>
+                                <param name="Background Opacity" key="9999/3336674837/3336685305/3336678548/1/200/202" value="0"/>
+                                <text>
+                                    <text-style ref="ts1">Lorem ipsum dolor sit amet, consectetur adipiscing elit</text-style>
+                                    <text-style ref="ts2">.</text-style>
+                                </text>
+                                <text-style-def id="ts1">
+                                    <text-style font="Helvetica Neue" fontSize="100" fontColor="1 1 1 1" bold="1" kerning="-1.11" alignment="center" lineSpacing="18">
+                                        <param name="MotionSimpleValues" key="MotionTextStyle:SimpleValues">
+                                            <param name="motionTextTracking" key="tracking" value="-1.11"/>
+                                        </param>
+                                    </text-style>
+                                </text-style-def>
+                                <text-style-def id="ts2">
+                                    <text-style font="Helvetica Neue" fontSize="100" fontColor="1 1 1 1" bold="1" alignment="center" lineSpacing="18"/>
+                                </text-style-def>
+                            </title>
+                        </asset-clip>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+        <smart-collection name="Projects" match="all">
+            <match-clip rule="is" type="project"/>
+        </smart-collection>
+        <smart-collection name="All Video" match="any">
+            <match-media rule="is" type="videoOnly"/>
+            <match-media rule="is" type="videoWithAudio"/>
+        </smart-collection>
+        <smart-collection name="Audio Only" match="all">
+            <match-media rule="is" type="audioOnly"/>
+        </smart-collection>
+        <smart-collection name="Stills" match="all">
+            <match-media rule="is" type="stills"/>
+        </smart-collection>
+        <smart-collection name="Favorites" match="all">
+            <match-ratings value="favorites"/>
+        </smart-collection>
+        <smart-collection name="Missing Analysis" match="all">
+            <match-analysis-type rule="isMissing" value="any"/>
+        </smart-collection>
+    </library>
+</fcpxml>

@@ -346,6 +346,16 @@ public struct FCPXMLWriter: Sendable {
         ".../Titles.localized/Subtitles.localized/Subtitle.localized/Subtitle.moti"
     static let subtitleEffectName = "Subtitle"
 
+    /// The Subtitle template draws its own rounded box behind the text — 85% opaque by default —
+    /// and ignores the `backgroundColor` in `text-style`. Its opacity is a published parameter,
+    /// written exactly as Final Cut Pro wrote it when the box was cleared by hand in the inspector
+    /// (`Fixtures/title_no_background.fcpxml`). The key is Motion's internal path; it cannot be
+    /// derived, only copied.
+    static let subtitleBackgroundOpacity = (
+        name: "Background Opacity",
+        key: "9999/3336674837/3336685305/3336678548/1/200/202"
+    )
+
     /// The id of the Subtitle effect resource, adding it to `resources` if the document has none.
     private func titleEffectID(in root: XMLElement) throws -> String {
         let effects = try root.nodes(forXPath: "resources/effect").compactMap { $0 as? XMLElement }
@@ -394,6 +404,18 @@ public struct FCPXMLWriter: Sendable {
             ("start", FCPTime(216_000 * sequenceFrameDuration.numerator, sequenceFrameDuration.denominator).description),
             ("duration", duration.description),
         ])
+
+        // Parameters come before the text, as in the export. Left out when there is a background,
+        // so the template keeps its own default rather than one copied from it.
+        if !style.drawsBackground {
+            let param = XMLElement(name: "param")
+            param.setOrderedAttributes([
+                ("name", Self.subtitleBackgroundOpacity.name),
+                ("key", Self.subtitleBackgroundOpacity.key),
+                ("value", "0"),
+            ])
+            element.addChild(param)
+        }
 
         let text = XMLElement(name: "text")
         let run = XMLElement(name: "text-style", stringValue: caption.text)
