@@ -413,6 +413,25 @@ another Mac. **Still to verify in Final Cut Pro** (`docs/MANUAL_TEST.md` §2f): 
 in with no box, and that **captions** with a transparent `backgroundColor` do too — the caption
 route has not been tried yet. Outline width 3 did not show on the titles either; not yet looked into.
 
+### Releases become a .pkg installer (2026-10-21, user's decision)
+
+Updating 0.1.3 → 0.1.4 on a second Mac by dragging out of the dmg (*Replace*) made the extension
+**vanish from Final Cut Pro**, through FCP restarts. An app copied from a downloaded dmg is
+quarantined, and macOS does not load a quarantined app's extensions until the app is launched —
+and nobody launches FCPCaption.app. Ejecting the dmg and launching the app once brought it back.
+
+`Tools/package_release.sh` now builds a signed, notarized **`FCPCaption.pkg`** instead: no
+quarantine on the payload, no Replace/Keep Both question, an update is *Continue ▸ Install*. It
+turns relocation off (otherwise Installer may update a stray copy in Downloads or DerivedData) and
+checks the built package — not the flags — for that, for the `/Applications` install location, and
+for the stapled ticket on the app inside. Needs the **Developer ID Installer** certificate, created
+2026-10-21. README, README.ko, the site and `docs/RELEASE.md` say two steps now. The site prefers
+the `.pkg` asset and falls back to a `.dmg` for old releases.
+
+A signed (not notarized) package was built end to end on this Mac. **Not yet verified:** that the
+extension appears on another Mac without launching the app, and survives an update —
+`docs/MANUAL_TEST.md` §2g. That needs a published, notarized release.
+
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.

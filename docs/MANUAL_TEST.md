@@ -94,6 +94,17 @@ Use a real edit, not a single clip on a spine.
 - [ ] **Titles** show no background box either
 - [ ] Unticking it brings back the colour that was chosen before, opaque
 
+## 2g. Installing and updating with the .pkg
+
+On a Mac that is **not** this build machine, with Final Cut Pro quit:
+
+- [ ] Opening the downloaded `FCPCaption.pkg` shows no Gatekeeper warning
+- [ ] **Continue ▸ Install** finishes, and FCPCaption.app is in `/Applications`
+- [ ] **Without launching FCPCaption.app**, Final Cut Pro shows it under Window ▸ Extensions
+- [ ] Installing a newer `.pkg` over it asks no Replace / Keep Both question, and the extension is
+      still there afterwards — again without launching the app
+- [ ] The panel's version (and the update notice going away) shows the new version
+
 ## 3. Transcription — 1 minute
 
 - [ ] Progress advances through 오디오 추출 → 음성을 전사하는 중, and never goes backwards

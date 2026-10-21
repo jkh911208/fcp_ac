@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds, signs, notarizes and staples FCPCaption.dmg.
+# Builds, signs, notarizes and staples FCPCaption.pkg.
 #
 #   Tools/package_release.sh
 #
@@ -7,6 +7,8 @@
 #
 #   FCPCAPTION_DEVELOPMENT_TEAM    your 10-character team id
 #   FCPCAPTION_CODE_SIGN_IDENTITY  usually "Developer ID Application: NAME (TEAM)"
+#   FCPCAPTION_INSTALLER_IDENTITY  usually "Developer ID Installer: NAME (TEAM)" — a different
+#                                  certificate; a pkg cannot be signed with the Application one
 #   FCPCAPTION_NOTARY_PROFILE      a keychain profile made with `xcrun notarytool store-credentials`
 #
 # Pass a version to publish the result to GitHub Releases, which is only file hosting here — the
@@ -24,11 +26,13 @@ cd "$(dirname "$0")/.."
 ROOT="$PWD"
 BUILD="$ROOT/build/release"
 APP="$BUILD/Build/Products/Release/FCPCaption.app"
-STAGE="$ROOT/build/dmg"
-DMG="$ROOT/build/FCPCaption.dmg"
+STAGE="$ROOT/build/pkg-root"
+COMPONENT="$ROOT/build/FCPCaption-component.pkg"
+PKG="$ROOT/build/FCPCaption.pkg"
 
 : "${FCPCAPTION_DEVELOPMENT_TEAM:?set FCPCAPTION_DEVELOPMENT_TEAM to your team id}"
 : "${FCPCAPTION_CODE_SIGN_IDENTITY:?set FCPCAPTION_CODE_SIGN_IDENTITY, e.g. \"Developer ID Application: Name (TEAM)\"}"
+: "${FCPCAPTION_INSTALLER_IDENTITY:?set FCPCAPTION_INSTALLER_IDENTITY, e.g. \"Developer ID Installer: Name (TEAM)\"}"
 
 echo "==> Regenerating the project with the release identity"
 ruby Tools/generate_project.rb >/dev/null
@@ -67,8 +71,8 @@ if codesign -d -v "$APP/Contents/PlugIns/FCPCaptionExtension.appex" 2>&1 | grep 
   exit 1
 fi
 
-# Called twice, for the app and then for the dmg, because a ticket belongs to one artifact:
-# stapling only the dmg leaves the app inside it without one, and the app is the part that
+# Called twice, for the app and then for the pkg, because a ticket belongs to one artifact:
+# stapling only the pkg leaves the app inside it without one, and the app is the part that
 # survives installation. Gatekeeper then has to ask Apple over the network the first time it is
 # launched — which is exactly the moment a new user is least able to diagnose a failure.
 #
@@ -101,52 +105,94 @@ if [ "$NOTARIZE" = 1 ]; then
   rm -f "$BUILD/FCPCaption.zip"
 fi
 
-echo "==> Building the disk image"
-rm -rf "$STAGE" "$DMG"
+# A pkg, not a dmg, because of what a drag-install does to an update. A dmg's app arrives
+# quarantined, and macOS will not load a quarantined app's extensions until someone launches the
+# app once — so every update by drag made FCPCaption vanish from Final Cut Pro until the user
+# thought to open an app they otherwise never open (seen on a second Mac, 2026-10-21). Installer
+# writes its payload without quarantine, replaces the old copy without a Replace/Keep Both
+# question, and registers the bundle, so an update is: open, Continue, Install, done.
+echo "==> Building the installer"
+rm -rf "$STAGE" "$COMPONENT" "$PKG"
 mkdir -p "$STAGE"
-# ditto, not cp -R: the stapled ticket has to survive the copy into the image, and cp does not
-# carry every piece of bundle metadata.
+# ditto, not cp -R: the stapled ticket has to survive the copy, and cp does not carry every piece
+# of bundle metadata.
 ditto "$APP" "$STAGE/FCPCaption.app"
-ln -s /Applications "$STAGE/Applications"
 
+# Relocation off. By default Installer looks for an app with the same bundle id anywhere on the
+# disk and updates *that* — a copy in Downloads, an Xcode build in DerivedData — leaving
+# /Applications stale while reporting success.
+COMPONENT_PLIST="$ROOT/build/FCPCaption-component.plist"
+pkgbuild --analyze --root "$STAGE" "$COMPONENT_PLIST" >/dev/null
+plutil -replace 0.BundleIsRelocatable -bool NO "$COMPONENT_PLIST"
+if [ "$(plutil -extract 0.BundleIsRelocatable raw "$COMPONENT_PLIST")" != "false" ]; then
+  echo "ERROR: could not turn off relocation in $COMPONENT_PLIST." >&2
+  exit 1
+fi
+
+APP_VERSION="$(/usr/libexec/PlistBuddy -c "Print CFBundleShortVersionString" "$APP/Contents/Info.plist")"
+pkgbuild --root "$STAGE" --component-plist "$COMPONENT_PLIST" \
+  --identifier com.jkh911208.FCPCaption.pkg --version "$APP_VERSION" \
+  --install-location /Applications "$COMPONENT" >/dev/null
+productbuild --package "$COMPONENT" ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} \
+  --sign "$FCPCAPTION_INSTALLER_IDENTITY" --timestamp "$PKG" >/dev/null
+rm -f "$COMPONENT" "$COMPONENT_PLIST"
+
+# Check the package that was actually built, not the settings that went into it.
+echo "==> Confirming what the installer will put on disk"
+EXPANDED="$ROOT/build/pkg-expanded"
+rm -rf "$EXPANDED"
+# It prints "write: Permission denied" while restoring ownership as a non-root user; harmless,
+# and the exit status still stops the script on a real failure.
+pkgutil --expand-full "$PKG" "$EXPANDED" 2>/dev/null
+PACKAGE_INFO="$(find "$EXPANDED" -maxdepth 2 -name PackageInfo -print -quit)"
+PAYLOAD_APP="$(find "$EXPANDED" -maxdepth 3 -type d -path "*/Payload/FCPCaption.app" -print -quit)"
+if [ -z "$PACKAGE_INFO" ] || [ -z "$PAYLOAD_APP" ]; then
+  echo "ERROR: could not find PackageInfo or the app in the expanded package." >&2
+  exit 1
+fi
+if grep -q "<relocate>" "$PACKAGE_INFO"; then
+  echo "ERROR: the package is relocatable — it could update a stray copy instead of /Applications." >&2
+  exit 1
+fi
+if ! grep -q 'install-location="/Applications"' "$PACKAGE_INFO"; then
+  echo "ERROR: the package does not install into /Applications." >&2
+  exit 1
+fi
 if [ "$NOTARIZE" = 1 ]; then
-  # The whole point of this release. If the copy lost the ticket, the dmg is no better than the
-  # one before it, and saying "notarized" about it would be false.
-  echo "==> Confirming the app in the image still carries its ticket"
-  if ! xcrun stapler validate "$STAGE/FCPCaption.app"; then
-    echo "ERROR: the staged app has no stapled ticket — an offline first launch would be blocked." >&2
+  # The whole point of stapling the app first. If the payload lost the ticket, an offline first
+  # launch would be blocked, and calling the release notarized would be false.
+  if ! xcrun stapler validate "$PAYLOAD_APP"; then
+    echo "ERROR: the app inside the package has no stapled ticket." >&2
     exit 1
   fi
 fi
-
-hdiutil create -volname "FCPCaption" -srcfolder "$STAGE" -ov -format UDZO "$DMG" >/dev/null
-codesign --force --timestamp ${KEYCHAIN_ARGS[@]+"${KEYCHAIN_ARGS[@]}"} --sign "$FCPCAPTION_CODE_SIGN_IDENTITY" "$DMG"
+rm -rf "$EXPANDED"
 
 if [ "$NOTARIZE" = 0 ]; then
   exit 0
 fi
 
-echo "==> Notarizing the disk image"
-notarize_and_staple "$DMG"
+echo "==> Notarizing the installer"
+notarize_and_staple "$PKG"
 
 echo "==> Checking the result the way Gatekeeper will"
-spctl --assess --type open --context context:primary-signature -vv "$DMG"
+spctl --assess --type install -vv "$PKG"
 spctl --assess --type execute -vv "$APP"
 
 VERSION="${1:-}"
 if [ -z "$VERSION" ]; then
   echo
-  echo "Done: $DMG"
-  echo "To publish it:  Tools/package_release.sh $VERSION   (or: gh release create <tag> $DMG)"
+  echo "Done: $PKG"
+  echo "To publish it:  Tools/package_release.sh <tag>   (or: gh release create <tag> $PKG)"
   exit 0
 fi
 
 echo "==> Publishing $VERSION"
-# The asset name is load-bearing: the website links releases/latest/download/FCPCaption.dmg.
+# The asset name is load-bearing: the website picks the .pkg out of the latest release.
 if gh release view "$VERSION" >/dev/null 2>&1; then
-  gh release upload "$VERSION" "$DMG" --clobber
+  gh release upload "$VERSION" "$PKG" --clobber
 else
-  gh release create "$VERSION" "$DMG" --title "FCPCaption ${VERSION#v}" --generate-notes
+  gh release create "$VERSION" "$PKG" --title "FCPCaption ${VERSION#v}" --generate-notes
 fi
 
 echo

@@ -4,7 +4,7 @@ Korean auto-captions for Final Cut Pro, without leaving Final Cut Pro.
 
 [한국어 README](README.ko.md) · [Website](https://jkh911208.github.io/fcp_ac/)
 
-> **Released** — [download the dmg](https://github.com/jkh911208/fcp_ac/releases/latest).
+> **Released** — [download the installer](https://github.com/jkh911208/fcp_ac/releases/latest).
 > Signed, notarized, and tested end to end in Final Cut Pro 12.
 
 ## Why
@@ -97,12 +97,15 @@ Options: `--model large-v3|large-v3-turbo`, `--language ko|auto`, `--output PATH
 
 ## Install
 
-1. Download the `.dmg` from the [Releases page](https://github.com/jkh911208/fcp_ac/releases)
-   and drag **FCPCaption** into Applications.
-2. Launch it once, so macOS registers the extension.
-3. In Final Cut Pro: **Window ▸ Extensions ▸ FCPCaption**.
+1. Download `FCPCaption.pkg` from the [Releases page](https://github.com/jkh911208/fcp_ac/releases)
+   and open it: **Continue ▸ Install**.
+2. In Final Cut Pro: **Window ▸ Extensions ▸ FCPCaption**.
 
-The build is signed and notarized, so it opens without a Gatekeeper warning.
+Updating is the same two steps — the installer replaces the old version in place. The package is
+signed and notarized, so it opens without a Gatekeeper warning.
+
+Releases up to 0.1.4 were a `.dmg`. If you installed one of those by dragging, the extension only
+appeared after launching the app once; the installer does not need that.
 
 ## Build from source
 
@@ -128,7 +131,7 @@ cd FCPCaptionCore && swift test
 | **M2** ✅ | Every delivery route tried in real Final Cut Pro — findings in [PROGRESS.md](PROGRESS.md) |
 | **M3** ✅ | Drag a project in, captions on the timeline |
 | M4 | OpenRouter engine — deferred, the local model is good enough |
-| **M5** ✅ | Signed and notarized dmg |
+| **M5** ✅ | Signed and notarized installer |
 
 ## License
 

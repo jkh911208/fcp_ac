@@ -247,7 +247,7 @@
           <tr><td class="done">M2 ✅</td><td data-en="Every delivery route tried in real Final Cut Pro — captions, titles, import, Replace">실제 Final Cut Pro에서 모든 전달 경로를 시험 — 캡션, 타이틀, 임포트, Replace</td></tr>
           <tr><td class="done">M3 ✅</td><td data-en="Drag a project in, captions on the timeline">프로젝트를 끌어다 놓으면 타임라인에 자막</td></tr>
           <tr><td>M4</td><td data-en="OpenRouter engine — deferred, the local model is good enough">OpenRouter 엔진 — 보류. 로컬 모델로 충분합니다</td></tr>
-          <tr><td class="done">M5 ✅</td><td data-en="Signed and notarized dmg on GitHub Releases">GitHub Releases에 서명·공증 dmg</td></tr>
+          <tr><td class="done">M5 ✅</td><td data-en="Signed and notarized installer on GitHub Releases">GitHub Releases에 서명·공증 설치 프로그램</td></tr>
         </tbody>
       </table>
     </div>
@@ -256,12 +256,10 @@
   <section>
     <div class="wrap">
       <h2 data-en="Installing">설치</h2>
-      <p class="sub" data-en="Three steps, and the panel is in your sidebar.">세 단계면 패널이 사이드바에 들어옵니다.</p>
+      <p class="sub" data-en="Two steps, and the panel is in your sidebar. Updating is the same two steps.">두 단계면 패널이 사이드바에 들어옵니다. 업데이트도 같은 두 단계입니다.</p>
       <ol class="steps">
-        <li><strong data-en="Open the dmg and drag FCPCaption into Applications">dmg를 열어 FCPCaption을 응용 프로그램으로</strong>
-          <p data-en="Signed and notarized, so it opens with no Gatekeeper warning.">서명·공증된 빌드라 Gatekeeper 경고 없이 열립니다.</p></li>
-        <li><strong data-en="Launch it once">한 번 실행</strong>
-          <p data-en="That is how macOS registers the extension with Final Cut Pro.">그래야 macOS가 Extension을 Final Cut Pro에 등록합니다.</p></li>
+        <li><strong data-en="Open FCPCaption.pkg: Continue ▸ Install">FCPCaption.pkg 열기: 계속 ▸ 설치</strong>
+          <p data-en="Signed and notarized, so it opens with no Gatekeeper warning. An update replaces the old version in place.">서명·공증된 설치 프로그램이라 Gatekeeper 경고 없이 열립니다. 업데이트하면 이전 버전을 그 자리에서 바꿉니다.</p></li>
         <li><strong data-en="In Final Cut Pro: Window ▸ Extensions ▸ FCPCaption">Final Cut Pro에서: 윈도우 ▸ 확장 프로그램 ▸ FCPCaption</strong>
           <p data-en="The first transcription downloads the model and compiles it for the Neural Engine — several minutes, once. Everything after that starts instantly.">첫 전사에서 모델을 내려받고 Neural Engine용으로 컴파일합니다 — 몇 분 걸리고, 한 번뿐입니다. 그 뒤로는 바로 시작합니다.</p></li>
       </ol>
@@ -381,8 +379,9 @@
     .then(data => {
       if (!data) { release = { state: "none" }; return; }
       const assets = data.assets || [];
-      // Prefer the dmg; fall back to the first asset, then to the release page itself.
-      const asset = assets.find(a => /\.dmg$/i.test(a.name)) || assets[0];
+      // Prefer the installer, then a dmg (releases up to 0.1.4), then any asset, then the page.
+      const asset = assets.find(a => /\.pkg$/i.test(a.name))
+        || assets.find(a => /\.dmg$/i.test(a.name)) || assets[0];
       release = {
         state: "ready",
         name: asset ? asset.name : (data.name || data.tag_name),

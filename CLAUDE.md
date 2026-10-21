@@ -14,7 +14,7 @@ timeline. The user drags a clip from the FCP timeline onto the sidebar panel; th
 the audio, transcribes it (on-device WhisperKit or the user's own OpenRouter key), splits it
 into Korean caption units, and writes the captions back into FCP's caption lane.
 
-Free and MIT-licensed, distributed as a signed + notarized `.dmg` on GitHub Releases. **No
+Free and MIT-licensed, distributed as a signed + notarized `.pkg` installer on GitHub Releases. **No
 server, no telemetry.** In local mode the app makes no network calls at all except model downloads.
 
 The full product spec — scope, non-goals, caption rules, milestones — is
@@ -113,7 +113,7 @@ until its new code paths are covered.** When you add or change code, add the mat
 - **Merge to `main` only when the feature fully works and has been tested in real FCP.
   Never merge on your own — wait for an explicit instruction**, even when the PR is green.
 - **Releases are outward-facing — confirm with the user before running them.** Publishing a GitHub
-  Release, uploading a notarized dmg, or pushing a tag is never automatic. Signing/notarization
+  Release, uploading a notarized installer, or pushing a tag is never automatic. Signing/notarization
   detail lives in `docs/RELEASE.md`.
 - **Commit at the end of every milestone.** English message, one-line summary + body. And update
   `PROGRESS.md` in the same commit — what works, what doesn't, what's next, what's blocked and why.
