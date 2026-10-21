@@ -1,6 +1,7 @@
 # Releasing
 
-A release is a signed, notarized `FCPCaption.dmg` on GitHub Releases. The website's download button
+A release is a signed, notarized `FCPCaption.pkg` installer on GitHub Releases (a `.dmg` up to
+0.1.4 — see *Why an installer* below). The website's download button
 reads the latest release from the GitHub API, so publishing one is all it takes to update the site.
 
 **Releases are outward-facing.** Per `CLAUDE.md`, the agent does not publish one without being
@@ -25,6 +26,20 @@ security find-identity -v -p codesigning | grep "Developer ID Application"
 
 The team id is the parenthesised code in that identity, and also the `OU` of the certificate's
 subject — so it never has to be looked up in a browser.
+
+### 1b. A Developer ID Installer certificate
+
+**Done on this Mac, 2026-10-21:** `Developer ID Installer: Gyuhyong Jeon (S597P43HS4)`.
+
+A `.pkg` is signed with a **different** certificate from the app: **Developer ID Installer**, not
+Developer ID Application. Same place — **Xcode ▸ Settings ▸ Accounts ▸** your Apple ID **▸** the team
+**▸ Manage Certificates… ▸ + ▸ Developer ID Installer** — then check:
+
+```bash
+security find-identity -v | grep "Developer ID Installer"
+```
+
+(`-p codesigning` hides it: an installer identity is not a code-signing one.)
 
 ### 2. Notarization credentials
 
@@ -51,23 +66,24 @@ can be read (a screenshot, a chat, a log), revoke it on that same page and store
 ```bash
 export FCPCAPTION_DEVELOPMENT_TEAM="<team id>"
 export FCPCAPTION_CODE_SIGN_IDENTITY="Developer ID Application: <Name> (<team id>)"
+export FCPCAPTION_INSTALLER_IDENTITY="Developer ID Installer: <Name> (<team id>)"
 export FCPCAPTION_NOTARY_PROFILE="fcpcaption"
 
 Tools/package_release.sh
 ```
 
 It regenerates the project with that identity, builds Release, signs the appex **before** the app
-that contains it, then **notarizes twice** — once for the app and once for the dmg — and checks the
+that contains it, then **notarizes twice** — once for the app and once for the installer — and checks the
 result the way Gatekeeper will (`spctl --assess`, `stapler validate`). Without
 `FCPCAPTION_NOTARY_PROFILE` it still signs and says clearly that it skipped notarization, rather
-than producing a dmg that fails on someone else's Mac.
+than producing an installer that fails on someone else's Mac.
 
 **Why twice.** A notarization ticket belongs to one artifact. v0.1.0 stapled only the dmg, so the
 app copied out of it into `/Applications` carried no ticket: Gatekeeper had to ask Apple over the
 network at first launch. Online that is invisible; offline, or behind a firewall, the first launch
 of a brand-new app is blocked — the worst possible moment. So the app is notarized and stapled
-first, the dmg is built from the stapled app, and the script **refuses to continue** if the copy
-into the image lost the ticket. Check either artifact with:
+first, the installer is built from the stapled app, and the script **refuses to continue** if the
+app in the package's payload lost the ticket. Check either artifact with:
 
 ```bash
 xcrun stapler validate /Applications/FCPCaption.app
@@ -90,9 +106,30 @@ Pass the version and the script does it:
 Tools/package_release.sh v0.1.0
 ```
 
-The asset must stay named `FCPCaption.dmg`: the site links
-`releases/latest/download/FCPCaption.dmg` as its fallback, and reads the real asset name from the
-API for the button label.
+The asset must stay named `FCPCaption.pkg`: the site picks the `.pkg` out of the latest release
+through the API (falling back to a `.dmg`, then to the release page).
+
+## Why an installer, not a dmg
+
+A drag-installed update made the extension **disappear from Final Cut Pro** (second Mac,
+2026-10-21, installing 0.1.4 over 0.1.3 with *Replace*). An app copied out of a downloaded dmg
+carries the quarantine flag, and macOS will not load a quarantined app's extensions until someone
+launches the app — an app this project's users otherwise never open. Launching it once brought the
+panel back, but that is a step every update would need and nobody would guess.
+
+Installer writes its payload without quarantine, replaces the old copy without a *Replace / Keep
+Both* question, and registers the bundle as part of the install. The update becomes: open the
+`.pkg`, **Continue ▸ Install**.
+
+Two settings matter, and the script checks the built package for both rather than trusting the
+flags that went in:
+
+- **Relocation is off** (`BundleIsRelocatable = NO`). By default Installer looks for an app with
+  the same bundle id anywhere on disk and updates that one — a copy in Downloads, an Xcode build in
+  DerivedData — leaving `/Applications` stale and reporting success. Recent `pkgbuild` already
+  defaults to off; it is set explicitly so a toolchain change cannot quietly flip it. In the
+  expanded `PackageInfo`, off is `<relocate/>` and on is `<relocate><bundle id=…/></relocate>`.
+- **Install location is `/Applications`.**
 
 ## Why this is not a GitHub Action
 
@@ -124,20 +161,21 @@ have caught, which is why the script validates the staged copy rather than trust
 
 ## Verifying on another Mac
 
-The definition of done (spec §15.5) is that a downloaded dmg opens with no Gatekeeper warning.
-Locally, the closest check is to strip the quarantine-free path and test as a downloaded file:
+The definition of done (spec §15.5) is that a downloaded release opens with no Gatekeeper warning.
+Locally, the closest check is to mark the package as downloaded and assess it:
 
 ```bash
-xattr -w com.apple.quarantine "0081;00000000;Safari;" build/FCPCaption.dmg
-spctl --assess --type open --context context:primary-signature -vv build/FCPCaption.dmg
+xattr -w com.apple.quarantine "0081;00000000;Safari;" build/FCPCaption.pkg
+spctl --assess --type install -vv build/FCPCaption.pkg
 ```
 
-Then install from that dmg and check the installed copy, which is the part that outlives the
-image — including the ticket that lets it launch with no network:
+Then install it and check the installed copy — including the ticket that lets it launch with no
+network, and that Final Cut Pro can see the extension **without** the app having been launched:
 
 ```bash
 spctl --assess --type execute -vv /Applications/FCPCaption.app
 xcrun stapler validate /Applications/FCPCaption.app
+pluginkit -mAvv -i com.jkh911208.FCPCaption.Extension   # Path should be under /Applications
 ```
 
 A real second Mac is still the real test.

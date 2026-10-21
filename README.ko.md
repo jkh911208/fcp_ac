@@ -4,7 +4,7 @@ Final Cut Pro를 떠나지 않고 만드는 한국어 자동 자막.
 
 [English README](README.md) · [웹사이트](https://jkh911208.github.io/fcp_ac/)
 
-> **배포됐습니다** — [dmg 내려받기](https://github.com/jkh911208/fcp_ac/releases/latest).
+> **배포됐습니다** — [설치 프로그램 내려받기](https://github.com/jkh911208/fcp_ac/releases/latest).
 > 서명·공증됐고, Final Cut Pro 12에서 처음부터 끝까지 실제로 확인했습니다.
 
 ## 왜 만드나
@@ -93,12 +93,15 @@ cd FCPCaptionCore && swift build -c release
 
 ## 설치
 
-1. [Releases 페이지](https://github.com/jkh911208/fcp_ac/releases)에서 `.dmg`를 받아
-   **FCPCaption**을 응용 프로그램 폴더로 끌어다 놓습니다.
-2. 한 번 실행합니다. 그래야 macOS가 Extension을 등록합니다.
-3. Final Cut Pro에서 **윈도우 ▸ 확장 프로그램 ▸ FCPCaption**.
+1. [Releases 페이지](https://github.com/jkh911208/fcp_ac/releases)에서 `FCPCaption.pkg`를 받아
+   열고 **계속 ▸ 설치**를 누릅니다.
+2. Final Cut Pro에서 **윈도우 ▸ 확장 프로그램 ▸ FCPCaption**.
 
-서명·공증된 빌드라 Gatekeeper 경고 없이 열립니다.
+업데이트도 같은 두 단계입니다 — 설치 프로그램이 이전 버전을 그 자리에서 바꿉니다. 서명·공증된
+설치 프로그램이라 Gatekeeper 경고 없이 열립니다.
+
+0.1.4까지는 `.dmg`였습니다. 그걸 끌어다 놓아 설치했다면 앱을 한 번 실행해야 확장 프로그램이
+보였는데, 설치 프로그램은 그 단계가 필요 없습니다.
 
 ## 소스에서 빌드
 
@@ -124,7 +127,7 @@ cd FCPCaptionCore && swift test
 | **M2** ✅ | 실제 Final Cut Pro에서 모든 전달 경로를 시험 — 결과는 [PROGRESS.md](PROGRESS.md) |
 | **M3** ✅ | 프로젝트를 끌어다 놓으면 타임라인에 자막 |
 | M4 | OpenRouter 엔진 — 보류. 로컬 모델로 충분합니다 |
-| **M5** ✅ | 서명·공증 dmg |
+| **M5** ✅ | 서명·공증 설치 프로그램 |
 
 ## 라이선스
 
