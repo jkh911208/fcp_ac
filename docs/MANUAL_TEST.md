@@ -105,6 +105,17 @@ On a Mac that is **not** this build machine, with Final Cut Pro quit:
       still there afterwards — again without launching the app
 - [ ] The panel's version (and the update notice going away) shows the new version
 
+## 2h. One take bladed into pieces
+
+Take one continuous spoken clip, blade it mid-sentence — ideally mid-word — into three pieces, and
+delete a few seconds of speech between the second and third.
+
+- [ ] The word at each cut is transcribed correctly on the side that holds most of it, not dropped
+      or garbled
+- [ ] No word appears in the captions of two pieces
+- [ ] Nothing said in the deleted stretch appears in any caption
+- [ ] No caption on a piece starts before the piece or runs past its end
+
 ## 3. Transcription — 1 minute
 
 - [ ] Progress advances through 오디오 추출 → 음성을 전사하는 중, and never goes backwards

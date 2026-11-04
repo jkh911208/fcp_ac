@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-10-21 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+**Last updated:** 2026-11-04 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
 Signed, notarized and published from this Mac; GitHub only hosts the file.
@@ -431,6 +431,28 @@ the `.pkg` asset and falls back to a `.dmg` for old releases.
 Released as **0.1.5**, the first `.pkg`. A signed (not notarized) package was first built end to end on this Mac. **Not yet verified:** that the
 extension appears on another Mac without launching the app, and survives an update —
 `docs/MANUAL_TEST.md` §2g. That needs a published, notarized release.
+
+### Clips cut from one take are transcribed with context (2026-11-04, user's request)
+
+Every clip is still transcribed on its own — that is right for a jump cut, where the timeline
+plays a different sentence from the source — but a clip bladed out of a longer take usually starts
+or ends mid-sentence, sometimes mid-word, and the engine heard that half-word with nothing around
+it. `TranscriptionWindow` now extracts **1.5 s of neighbouring media on each side** (less at the
+head or tail of the file) and maps the words back into the clip. A word is kept by the side holding
+its midpoint and clamped to the clip, so two adjacent pieces of one take never caption the same
+word twice, and speech that lives only in the padding — the part the editor cut away — is dropped.
+Unit tests pin the arithmetic; `docs/MANUAL_TEST.md` §2h is the check in real FCP, **not yet run**.
+
+What this does not change: a sentence that runs across a cut still becomes two captions, one per
+piece, because an FCPXML caption is anchored to one clip. Merging adjacent pieces of one take into
+one transcription — and letting a caption cross the cut — needs a real FCP import to show whether
+an anchored caption may extend past its parent clip. Not attempted.
+
+**Known, not fixed — the `.itt` route only** (the user rarely uses it, 2026-11-04):
+`Result.timelineCaptions` neither clamps captions to their clip nor removes overlaps, so a clip's
+last caption stretched to the 1 s minimum can overlap the next clip's first. It also adds a
+connected clip's `offset` as if it were a timeline time, when it is a time inside its parent.
+The FCPXML route is unaffected by both.
 
 ## Next
 
