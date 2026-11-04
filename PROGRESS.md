@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-10-21 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+**Last updated:** 2026-11-04 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
 Signed, notarized and published from this Mac; GitHub only hosts the file.
@@ -431,6 +431,35 @@ the `.pkg` asset and falls back to a `.dmg` for old releases.
 Released as **0.1.5**, the first `.pkg`. A signed (not notarized) package was first built end to end on this Mac. **Not yet verified:** that the
 extension appears on another Mac without launching the app, and survives an update —
 `docs/MANUAL_TEST.md` §2g. That needs a published, notarized release.
+
+### Multicam clips (2026-11-04, user's report)
+
+**Every multicam clip failed** with "클립의 원본 미디어 경로를 찾지 못했습니다". An `mc-clip`'s `ref`
+names a `<media>` resource holding a `<multicam>`, not an `<asset>`, so the reader found no file at
+all. The reader now follows the clip's `mc-source` switched to audio (`srcEnable` `all` or
+`audio`) into that angle, finds the angle's `asset-clip` playing where the clip starts, and takes
+its file, bookmark and timecode from there. A clip cut to one angle's picture and another angle's
+sound is transcribed from the sound angle.
+
+The time arithmetic was read off a real export the user made (`Fixtures/multicam.fcpxml`, cut
+from a 124-multicam-clip project), not assumed: angle elements are positioned from **zero** while
+an `mc-clip`'s `start` is in multicam timecode starting at `tcStart`. The proof is the multicam's
+browser clip, whose `start` is exactly `tcStart` and whose `duration` is exactly the longest
+angle's end. Run against the full source project, 120 of its 121 timeline multicam clips now find
+their file; the other is muted at -96 dB and is skipped as before. The 146 titles FCP had put on
+multicam clips sit on the multicam's 59.94 grid for `offset` and the 60p sequence's for
+`duration`, which is what the writer already does once the clip's frame duration is the
+multicam's. Tested in `MulticamTests`, including Apple's DTD.
+
+Skipped, with a Korean reason: a clip with no angle switched to audio (`.noAudio`), and one whose
+audio angle is a gap, or something other than a plain clip, where the clip starts
+(`.multicamAngleUnreadable`) — never observed in the real project. A clip running past the end of
+its audio angle is transcribed only as far as the angle goes (`audibleDuration`).
+
+**Not yet verified in Final Cut Pro** (`docs/MANUAL_TEST.md` §2h): the File ▸ Export XML document
+carries **no security-scoped bookmark** for the camera files, so whether the sandboxed extension
+can open them depends on what FCP puts in the document it hands over on a drop. Compound clips
+(`ref-clip` into a `<media><sequence>`) are still not read and most likely fail the same way.
 
 ## Next
 

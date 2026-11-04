@@ -21,8 +21,9 @@ public struct FCPXMLReader: Sendable {
         let version = root.attribute(forName: "version")?.stringValue ?? "1.14"
         let formats = try formatTable(in: root)
         let assets = try assetTable(in: root)
+        let multicams = try multicamTable(in: root)
         let sequence = try sequenceInfo(in: root, formats: formats)
-        let clips = try spineClips(in: root, formats: formats, assets: assets)
+        let clips = try spineClips(in: root, resources: Resources(formats: formats, assets: assets, multicams: multicams))
 
         return FCPXMLDocument(version: version, sequence: sequence, clips: clips)
     }
@@ -82,6 +83,53 @@ public struct FCPXMLReader: Sendable {
         return table
     }
 
+    /// A `<multicam>` media resource: its timecode origin and, per angle, what plays when.
+    private struct MulticamInfo {
+        var tcStart: FCPTime
+        var formatID: String?
+        var angles: [String: [AngleItem]]
+    }
+
+    /// One story element of an angle — usually an `asset-clip`, sometimes a `gap`.
+    private struct AngleItem {
+        var element: XMLElement
+        var offset: FCPTime
+        var duration: FCPTime
+    }
+
+    private struct Resources {
+        var formats: [String: FCPTime]
+        var assets: [String: AssetInfo]
+        var multicams: [String: MulticamInfo]
+    }
+
+    private func multicamTable(in root: XMLElement) throws -> [String: MulticamInfo] {
+        var table: [String: MulticamInfo] = [:]
+        for media in try root.nodes(forXPath: "resources/media").compactMap({ $0 as? XMLElement }) {
+            // A <media> may hold a <sequence> instead — a compound clip — which this does not read.
+            guard let id = media.attribute(forName: "id")?.stringValue,
+                  let multicam = media.elements(forName: "multicam").first else { continue }
+            var angles: [String: [AngleItem]] = [:]
+            for angle in multicam.elements(forName: "mc-angle") {
+                guard let angleID = angle.attribute(forName: "angleID")?.stringValue else { continue }
+                angles[angleID] = try angle.children?.compactMap { $0 as? XMLElement }.compactMap { item in
+                    guard let durationRaw = item.attribute(forName: "duration")?.stringValue else { return nil }
+                    return AngleItem(
+                        element: item,
+                        offset: try item.attribute(forName: "offset")?.stringValue.map(FCPTime.parse) ?? .zero,
+                        duration: try FCPTime.parse(durationRaw)
+                    )
+                } ?? []
+            }
+            table[id] = MulticamInfo(
+                tcStart: try multicam.attribute(forName: "tcStart")?.stringValue.map(FCPTime.parse) ?? .zero,
+                formatID: multicam.attribute(forName: "format")?.stringValue,
+                angles: angles
+            )
+        }
+        return table
+    }
+
     // MARK: - Sequence
 
     private func sequenceInfo(in root: XMLElement, formats: [String: FCPTime]) throws -> SequenceInfo? {
@@ -112,11 +160,7 @@ public struct FCPXMLReader: Sendable {
 
     private static let clipElements = ["asset-clip", "clip", "sync-clip", "mc-clip", "ref-clip"]
 
-    private func spineClips(
-        in root: XMLElement,
-        formats: [String: FCPTime],
-        assets: [String: AssetInfo]
-    ) throws -> [ClipRef] {
+    private func spineClips(in root: XMLElement, resources: Resources) throws -> [ClipRef] {
         // A dropped clip may come with no <spine> at all, so fall back to the whole document.
         let scopes = try root.nodes(forXPath: ".//spine").compactMap { $0 as? XMLElement }
         let containers: [XMLElement] = scopes.isEmpty ? [root] : scopes
@@ -125,7 +169,7 @@ public struct FCPXMLReader: Sendable {
         for container in containers {
             for child in container.children?.compactMap({ $0 as? XMLElement }) ?? [] {
                 guard Self.clipElements.contains(child.name ?? "") else { continue }
-                try collect(child, into: &clips, formats: formats, assets: assets)
+                try collect(child, into: &clips, resources: resources)
             }
         }
         return clips
@@ -138,54 +182,106 @@ public struct FCPXMLReader: Sendable {
     /// therefore misses it entirely, and misses it silently: in a real 121-clip project
     /// (2026-09-09) that was 47 audible clips, 45 of them tagged `dialogue`, 2.8 minutes of
     /// speech that no caption would ever have covered and nothing would have reported.
-    private func collect(
-        _ element: XMLElement,
-        into clips: inout [ClipRef],
-        formats: [String: FCPTime],
-        assets: [String: AssetInfo]
-    ) throws {
-        clips.append(try clip(from: element, formats: formats, assets: assets))
+    private func collect(_ element: XMLElement, into clips: inout [ClipRef], resources: Resources) throws {
+        clips.append(try clip(from: element, resources: resources))
         for child in element.children?.compactMap({ $0 as? XMLElement }) ?? [] {
             guard Self.clipElements.contains(child.name ?? "") else { continue }
-            try collect(child, into: &clips, formats: formats, assets: assets)
+            try collect(child, into: &clips, resources: resources)
         }
     }
 
-    private func clip(
-        from element: XMLElement,
-        formats: [String: FCPTime],
-        assets: [String: AssetInfo]
-    ) throws -> ClipRef {
+    private func clip(from element: XMLElement, resources: Resources) throws -> ClipRef {
         let name = element.name ?? "clip"
         let assetID = element.attribute(forName: "ref")?.stringValue ?? ""
-        let asset = assets[assetID]
+        let multicam = name == "mc-clip" ? resources.multicams[assetID] : nil
+        let asset = resources.assets[assetID]
 
         guard let durationRaw = element.attribute(forName: "duration")?.stringValue else {
             throw FCPXMLError.missingAttribute(element: name, attribute: "duration")
         }
+        let duration = try FCPTime.parse(durationRaw)
 
         // `start` defaults to the asset's own start, not to zero: caption offsets are measured in
         // this clip's media time, so getting the default wrong shifts every caption.
         let start = try element.attribute(forName: "start")?.stringValue.map(FCPTime.parse)
+            ?? multicam?.tcStart
             ?? asset?.start
             ?? .zero
 
-        return ClipRef(
+        var clip = ClipRef(
             element: name,
             assetID: assetID,
             name: element.attribute(forName: "name")?.stringValue ?? asset?.name ?? "clip",
             offset: try element.attribute(forName: "offset")?.stringValue.map(FCPTime.parse) ?? .zero,
             start: start,
-            duration: try FCPTime.parse(durationRaw),
+            duration: duration,
             lane: element.attribute(forName: "lane")?.stringValue.flatMap(Int.init),
             mediaURL: asset?.mediaURL,
             mediaBookmark: asset?.mediaBookmark,
             assetStart: asset?.start ?? .zero,
-            assetFrameDuration: asset?.formatID.flatMap { formats[$0] },
+            assetFrameDuration: asset?.formatID.flatMap { resources.formats[$0] },
             hasAudio: asset?.hasAudio ?? true,
             skipReason: Self.skipReason(for: element, hasAudio: asset?.hasAudio ?? true),
             captions: try captions(in: element)
         )
+        if let multicam {
+            try resolveAudio(of: &clip, element: element, in: multicam, resources: resources)
+        }
+        return clip
+    }
+
+    /// Points a multicam clip at the file its audio really comes from.
+    ///
+    /// An `mc-clip`'s `ref` names a `<media>`, not an `<asset>`, so on its own it has no file at
+    /// all — which is how every multicam clip used to fail with "원본 미디어 경로를 찾지 못했습니다".
+    /// The file belongs to one angle, chosen per clip by the `mc-source` switched to audio.
+    ///
+    /// The time arithmetic is read off a real export (`Fixtures/multicam.fcpxml`), not assumed:
+    /// angle elements are positioned from **zero**, while the clip's `start` is in the multicam's
+    /// timecode, which begins at `tcStart`. The proof is the multicam's own browser clip, whose
+    /// `start` is exactly `tcStart` and whose `duration` is exactly the longest angle's end.
+    private func resolveAudio(
+        of clip: inout ClipRef,
+        element: XMLElement,
+        in multicam: MulticamInfo,
+        resources: Resources
+    ) throws {
+        clip.assetFrameDuration = multicam.formatID.flatMap { resources.formats[$0] }
+        clip.mediaURL = nil
+        clip.mediaBookmark = nil
+        // Reasons on the clip itself — muted, retimed — come first; they hold whatever the angle is.
+        guard clip.skipReason == nil else { return }
+
+        let sources = element.elements(forName: "mc-source")
+        let audioSource = sources.first {
+            ["all", "audio"].contains($0.attribute(forName: "srcEnable")?.stringValue ?? "all")
+        }
+        if element.attribute(forName: "srcEnable")?.stringValue == "video" || (!sources.isEmpty && audioSource == nil) {
+            clip.hasAudio = false
+            clip.skipReason = .noAudio
+            return
+        }
+
+        let local = clip.start - multicam.tcStart
+        guard let angleID = audioSource?.attribute(forName: "angleID")?.stringValue,
+              let item = multicam.angles[angleID]?.first(where: { $0.offset <= local && local < $0.offset + $0.duration }),
+              item.element.name == "asset-clip",
+              let assetID = item.element.attribute(forName: "ref")?.stringValue,
+              let asset = resources.assets[assetID]
+        else {
+            clip.skipReason = .multicamAngleUnreadable
+            return
+        }
+
+        // The angle's own `start` is in its asset's timecode, like any asset-clip's.
+        let angleStart = try item.element.attribute(forName: "start")?.stringValue.map(FCPTime.parse) ?? asset.start
+        clip.mediaURL = asset.mediaURL
+        clip.mediaBookmark = asset.mediaBookmark
+        clip.hasAudio = asset.hasAudio
+        // Where the file begins in multicam time, so `start - assetStart` lands inside the file.
+        clip.assetStart = multicam.tcStart + item.offset - angleStart + asset.start
+        clip.audibleDuration = min(clip.duration, item.offset + item.duration - local)
+        clip.skipReason = Self.skipReason(for: item.element, hasAudio: asset.hasAudio)
     }
 
     /// Reasons a clip is not worth transcribing, read straight off the edit.

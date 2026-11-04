@@ -287,7 +287,9 @@ public struct CaptionPipeline: Sendable {
         // would put captions where nothing is said.
         let range = CMTimeRange(
             start: CMTime(seconds: clip.mediaStartSeconds, preferredTimescale: 600),
-            duration: CMTime(seconds: clip.duration.seconds, preferredTimescale: 600)
+            // A multicam clip's audio angle can end before the clip does; past that, the file
+            // holds footage the multicam never used.
+            duration: CMTime(seconds: clip.audibleDuration.seconds, preferredTimescale: 600)
         )
         progress(Report(stage: .extractingAudio, fraction: 0))
         try await AudioExtractor().extract(from: media, range: range, to: audio) { fraction in
@@ -329,6 +331,7 @@ public struct CaptionPipeline: Sendable {
                 assetStart=\(clip.assetStart.seconds, format: .fixed(precision: 2), privacy: .public)s \
                 mediaStart=\(clip.mediaStartSeconds, format: .fixed(precision: 2), privacy: .public)s \
                 duration=\(clip.durationSeconds, format: .fixed(precision: 2), privacy: .public)s \
+                audible=\(clip.audibleDuration.seconds, format: .fixed(precision: 2), privacy: .public)s \
                 media=\(clip.mediaURL?.lastPathComponent ?? "none", privacy: .public) \
                 bookmark=\(clip.mediaBookmark != nil, privacy: .public) \
                 skip=\(clip.skipReason.map(String.init(describing:)) ?? "no", privacy: .public)

@@ -94,6 +94,22 @@ Use a real edit, not a single clip on a spine.
 - [ ] **Titles** show no background box either
 - [ ] Unticking it brings back the colour that was chosen before, opaque
 
+## 2h. Multicam clips
+
+Use a project with a multicam clip whose angles were synced from separate cameras.
+
+- [ ] A multicam clip dragged in from the timeline is captioned — no "원본 미디어 경로를 찾지
+      못했습니다"
+- [ ] Captions line up with speech: the clip's audio is taken from the angle switched to audio,
+      not from the angle on screen. Cut a shot to angle B's picture with angle A's sound, and check
+      the captions follow A
+- [ ] A shot whose audio angle is switched to an angle that only starts later in the multicam is
+      named under "클립 N개는 자막을 만들지 않았습니다", not captioned from the wrong second
+- [ ] Captions and titles imported onto a multicam clip show no "not on an edit frame boundary"
+      error
+- [ ] The multicam clip dragged in **from the browser** (the whole multicam) is captioned up to
+      where its audio angle ends
+
 ## 2g. Installing and updating with the .pkg
 
 On a Mac that is **not** this build machine, with Final Cut Pro quit:

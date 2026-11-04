@@ -99,3 +99,25 @@ gone wrong silently:
 
 In the source project those cases were 9 retimed, 13 muted, and 49 connected clips of which 47 were
 audible — 45 tagged `dialogue`. None of it was reported to anyone.
+
+## `multicam.fcpxml`
+
+Cut from a real project the user edited (2026-11-04, Final Cut Pro, FCPXML 1.14): a library with
+two projects and 124 multicam clips, every one of which this app failed to caption. Kept: the
+multicam resource `r16` (two angles), its two camera assets and their formats, three timeline
+`mc-clip`s that use it, and the multicam's own browser clip under the event. Removed: everything
+else, every bookmark and `metadata` block, the analysis markers, the library location, and the
+titles on the clips — they were the user's own transcript. Media paths became `/Fixtures/…` and
+the project name `Multicam`. Nothing in a kept element was changed otherwise, and the result
+validates against Apple's `FCPXMLv1_14.dtd`.
+
+### What it settled
+
+| Question | Answer from this file |
+|---|---|
+| What an `mc-clip`'s `ref` names | a `<media>` holding a `<multicam>` — **not** an `<asset>`, so there is no file on the clip itself |
+| Where the file is | an `asset-clip` inside an `<mc-angle>`, which may open with a `<gap>` when that camera started later |
+| Which angle supplies sound | the `<mc-source>` with `srcEnable="all"` or `"audio"`; a cut can take its picture from one angle (`"video"`) and its sound from another |
+| Time base of the angles | elements are positioned from **0**; the `mc-clip`'s `start` is in multicam time beginning at `tcStart`. The browser clip proves it: `start` = `tcStart`, `duration` = the longest angle's end |
+| The grid for anchored titles | `offset` on the multicam's format (`1001/60000s`), `duration` on the sequence's (`100/6000s`) — 146 of 146 titles in the source project |
+| Bookmarks | **none** for the camera assets in a File ▸ Export XML document |
