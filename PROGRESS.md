@@ -456,7 +456,7 @@ audio angle is a gap, or something other than a plain clip, where the clip start
 (`.multicamAngleUnreadable`) — never observed in the real project. A clip running past the end of
 its audio angle is transcribed only as far as the angle goes (`audibleDuration`).
 
-**Verified in Final Cut Pro on 2026-11-04** (user's report, `docs/MANUAL_TEST.md` §2h): dragging
+Released as **0.1.6**. **Verified in Final Cut Pro on 2026-11-04** (user's report, `docs/MANUAL_TEST.md` §2h): dragging
 the multicam project onto the panel captions its clips. The File ▸ Export XML document carried no
 security-scoped bookmark for the camera files, but the document FCP hands over on a drop is
 readable by the sandboxed extension. The individual §2h edge cases (an audio angle that starts
