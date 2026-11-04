@@ -283,11 +283,14 @@ public struct CaptionPipeline: Sendable {
         let audio = AudioExtractor.temporaryOutputURL()
         defer { try? FileManager.default.removeItem(at: audio) }
 
-        // Only the part of the media the clip actually uses — captioning trimmed-away footage
-        // would put captions where nothing is said.
+        // The part of the media the clip uses, plus a little either side so a word cut in half by
+        // the edit is heard whole. Words outside the clip are dropped after transcription —
+        // captioning trimmed-away footage would put captions where nothing is said.
+        let window = TranscriptionWindow(clipMediaStart: clip.mediaStartSeconds,
+                                         clipDuration: clip.duration.seconds)
         let range = CMTimeRange(
-            start: CMTime(seconds: clip.mediaStartSeconds, preferredTimescale: 600),
-            duration: CMTime(seconds: clip.duration.seconds, preferredTimescale: 600)
+            start: CMTime(seconds: window.mediaStart, preferredTimescale: 600),
+            duration: CMTime(seconds: window.duration, preferredTimescale: 600)
         )
         progress(Report(stage: .extractingAudio, fraction: 0))
         try await AudioExtractor().extract(from: media, range: range, to: audio) { fraction in
@@ -295,10 +298,11 @@ public struct CaptionPipeline: Sendable {
         }
         try Task.checkCancellation()
 
-        let words = try await engine.transcribe(audio: audio, language: language) { phase, fraction in
+        let heard = try await engine.transcribe(audio: audio, language: language) { phase, fraction in
             progress(Self.report(for: phase, fraction: fraction))
         }
         try Task.checkCancellation()
+        let words = window.clipWords(heard)
 
         progress(Report(stage: .buildingCaptions, fraction: 0))
         let captions = CaptionBuilder(options: captionOptions).build(from: words)

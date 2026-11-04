@@ -105,25 +105,52 @@ struct CaptionPipelineTests {
         #expect(captions.allSatisfy { $0.role == "iTT?captionFormat=ITT.ko" })
     }
 
-    @Test func transcribesOnlyThePartOfTheMediaTheClipUses() async throws {
-        // The clip plays 4 seconds starting 3 seconds into a 10-second file.
+    @Test func transcribesThePartOfTheMediaTheClipUsesPlusContext() async throws {
+        // The clip plays 4 seconds starting 3 seconds into a 10-second file; the engine hears it
+        // with the padding on both sides, so a word the edit cuts through is heard whole.
         let (data, media) = try makeProject(clipStart: 3, clipDuration: 4)
         defer { try? FileManager.default.removeItem(at: media) }
 
         let engine = StubEngine(words: words)
         _ = try await CaptionPipeline(engine: engine).run(document: data)
 
-        #expect(abs(try #require(engine.audioSeconds) - 4) < 0.15)
+        let expected = 4 + 2 * TranscriptionWindow.padding
+        #expect(abs(try #require(engine.audioSeconds) - expected) < 0.15)
+    }
+
+    /// The stub's words as an engine would time them: from the start of the padded audio.
+    private func heardWithLead(_ words: [TranscriptWord], lead: TimeInterval) -> [TranscriptWord] {
+        words.map { TranscriptWord(text: $0.text, start: $0.start + lead, end: $0.end + lead) }
     }
 
     @Test func captionTimesAreOffsetByTheClipsStart() async throws {
         let (data, media) = try makeProject(clipStart: 3, clipDuration: 4)
         defer { try? FileManager.default.removeItem(at: media) }
 
-        let result = try await CaptionPipeline(engine: StubEngine(words: words)).run(document: data)
+        let engine = StubEngine(words: heardWithLead(words, lead: TranscriptionWindow.padding))
+        let result = try await CaptionPipeline(engine: engine).run(document: data)
         let caption = try #require(try FCPXMLReader().read(data: result.document).clips.first?.captions.first)
-        // 0.2s into the transcript is 3.2s into the clip's own media time.
+        // 0.2s into the clip is 3.2s into the clip's own media time — the lead is taken back out.
         #expect(abs(caption.offset.seconds - 3.2) < 0.05)
+    }
+
+    // The context is for hearing, not for captioning: speech that only the padding holds — the
+    // part of the take the editor cut away — must never reach the timeline.
+    @Test func wordsHeardOnlyInTheContextAreNotCaptioned() async throws {
+        let (data, media) = try makeProject(clipStart: 3, clipDuration: 4)
+        defer { try? FileManager.default.removeItem(at: media) }
+
+        let lead = TranscriptionWindow.padding
+        let engine = StubEngine(words: [
+            TranscriptWord(text: "잘린", start: 0.2, end: 0.8),                    // before the clip
+            TranscriptWord(text: "안녕하세요.", start: lead + 0.2, end: lead + 1.2),
+            TranscriptWord(text: "뒷부분.", start: lead + 4.5, end: lead + 5.2),   // after it
+        ])
+        let result = try await CaptionPipeline(engine: engine).run(document: data)
+
+        #expect(result.words == 1)
+        let captions = try #require(try FCPXMLReader().read(data: result.document).clips.first?.captions)
+        #expect(captions.map(\.text) == ["안녕하세요."])
     }
 
     @Test func theLanguageReachesTheEngineAndTheRole() async throws {
@@ -232,16 +259,17 @@ extension CaptionPipelineTests {
         #expect(written.clips.allSatisfy { !$0.captions.isEmpty })
     }
 
-    // Trimmed-away footage is never transcribed: each clip is read only over the range it uses.
-    // The second clip starts 12s into a 20s file, so its audio is the 12s–17s slice.
+    // Each clip is read over the range it uses plus the context padding — never the whole file.
+    // The second clip starts 12s into a 20s file, so its audio is the 10.5s–18.5s slice.
     @Test func onlyTheUsedRangeOfEachClipIsTranscribed() async throws {
         let (data, media) = try makeTwoClipProject()
         defer { try? FileManager.default.removeItem(at: media) }
 
         let engine = StubEngine(words: words)
         _ = try await CaptionPipeline(engine: engine).run(document: data)
-        // The stub records the last clip it saw: 5 seconds, not the whole 20-second file.
-        #expect(abs(try #require(engine.audioSeconds) - 5) < 0.2)
+        // The stub records the last clip it saw: 8 seconds, not the whole 20-second file.
+        let expected = 5 + 2 * TranscriptionWindow.padding
+        #expect(abs(try #require(engine.audioSeconds) - expected) < 0.2)
     }
 
     @Test func aClipWithNoSpeechDoesNotFailTheWholeRun() async throws {
