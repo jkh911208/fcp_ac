@@ -65,8 +65,13 @@ public struct ClipRef: Sendable, Equatable {
     /// get a position inside the file; `mediaRange` does it for you.
     public var start: FCPTime
     public var duration: FCPTime
+    /// How much of the clip, from its start, has media behind its audio. Equal to `duration`
+    /// except for a multicam clip that runs past the end of its audio angle — the whole multicam
+    /// in the browser does exactly that when one camera stopped before the other.
+    public var audibleDuration: FCPTime
     public var lane: Int?
-    /// The original media on disk, from the asset's `media-rep`.
+    /// The original media on disk, from the asset's `media-rep`. For a multicam clip, the media of
+    /// the angle its audio is taken from.
     public var mediaURL: URL?
     /// The security-scoped bookmark Final Cut Pro puts inside `media-rep`.
     ///
@@ -75,6 +80,9 @@ public struct ClipRef: Sendable, Equatable {
     /// is the grant that makes it readable, which is why FCP ships one with every asset.
     public var mediaBookmark: Data?
     /// The asset's own `start` — its timecode origin, and the zero point `start` is measured from.
+    ///
+    /// For a multicam clip, the point in the *multicam's* time at which the audio angle's file
+    /// begins, so that `start - assetStart` is still a position inside that file.
     public var assetStart: FCPTime
     /// The asset's own format, which may differ from the sequence's (conformed clips).
     public var assetFrameDuration: FCPTime?
@@ -101,8 +109,12 @@ public struct ClipRef: Sendable, Equatable {
         case retimed(speed: Double?)
         /// Silenced in the edit, so its dialogue is not in the finished video.
         case silenced
-        /// The asset says it carries no audio at all.
+        /// The asset says it carries no audio at all — or, for a multicam clip, no angle is
+        /// switched to supply audio.
         case noAudio
+        /// A multicam clip whose audio angle has no media file where the clip starts: the angle
+        /// is a gap there, or holds something other than a plain clip.
+        case multicamAngleUnreadable
 
         public var korean: String {
             switch self {
@@ -113,6 +125,8 @@ public struct ClipRef: Sendable, Equatable {
                 return "음소거된 클립이라 건너뜁니다"
             case .noAudio:
                 return "오디오가 없는 클립입니다"
+            case .multicamAngleUnreadable:
+                return "멀티캠 오디오 앵글에 이 구간의 원본 영상이 없어 건너뜁니다. 다른 앵글을 오디오로 고르면 자막을 만들 수 있습니다"
             }
         }
     }
@@ -124,6 +138,7 @@ public struct ClipRef: Sendable, Equatable {
         offset: FCPTime,
         start: FCPTime,
         duration: FCPTime,
+        audibleDuration: FCPTime? = nil,
         lane: Int? = nil,
         mediaURL: URL? = nil,
         mediaBookmark: Data? = nil,
@@ -139,6 +154,7 @@ public struct ClipRef: Sendable, Equatable {
         self.offset = offset
         self.start = start
         self.duration = duration
+        self.audibleDuration = audibleDuration ?? duration
         self.lane = lane
         self.mediaURL = mediaURL
         self.mediaBookmark = mediaBookmark
