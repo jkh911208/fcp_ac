@@ -456,9 +456,11 @@ audio angle is a gap, or something other than a plain clip, where the clip start
 (`.multicamAngleUnreadable`) — never observed in the real project. A clip running past the end of
 its audio angle is transcribed only as far as the angle goes (`audibleDuration`).
 
-**Not yet verified in Final Cut Pro** (`docs/MANUAL_TEST.md` §2h): the File ▸ Export XML document
-carries **no security-scoped bookmark** for the camera files, so whether the sandboxed extension
-can open them depends on what FCP puts in the document it hands over on a drop. Compound clips
+**Verified in Final Cut Pro on 2026-11-04** (user's report, `docs/MANUAL_TEST.md` §2h): dragging
+the multicam project onto the panel captions its clips. The File ▸ Export XML document carried no
+security-scoped bookmark for the camera files, but the document FCP hands over on a drop is
+readable by the sandboxed extension. The individual §2h edge cases (an audio angle that starts
+later, the whole multicam from the browser) were not reported separately. Compound clips
 (`ref-clip` into a `<media><sequence>`) are still not read and most likely fail the same way.
 
 ## Next

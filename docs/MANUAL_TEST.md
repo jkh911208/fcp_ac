@@ -98,8 +98,8 @@ Use a real edit, not a single clip on a spine.
 
 Use a project with a multicam clip whose angles were synced from separate cameras.
 
-- [ ] A multicam clip dragged in from the timeline is captioned — no "원본 미디어 경로를 찾지
-      못했습니다"
+- [x] A multicam clip dragged in from the timeline is captioned — no "원본 미디어 경로를 찾지
+      못했습니다" (2026-11-04, user's report: works in real FCP)
 - [ ] Captions line up with speech: the clip's audio is taken from the angle switched to audio,
       not from the angle on screen. Cut a shot to angle B's picture with angle A's sound, and check
       the captions follow A
