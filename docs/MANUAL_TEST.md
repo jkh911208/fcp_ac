@@ -110,6 +110,18 @@ Use a project with a multicam clip whose angles were synced from separate camera
 - [ ] The multicam clip dragged in **from the browser** (the whole multicam) is captioned up to
       where its audio angle ends
 
+## 2i. Detached audio
+
+Use a project where a clip's audio was detached (**Clip ▸ Detach Audio**, ⌃⇧S) and then cut
+separately from its picture.
+
+- [ ] Dragging the project in captions the detached audio — no "원본 미디어 경로를 찾지 못했습니다"
+- [ ] The captions line up with the speech in the detached audio, not drift by seconds
+- [ ] The picture half of the detached clip is not listed as a failure; at most it is named as a
+      clip with no audio
+- [ ] Captions and titles imported onto detached audio show no "not on an edit frame boundary"
+      error
+
 ## 2g. Installing and updating with the .pkg
 
 On a Mac that is **not** this build machine, with Final Cut Pro quit:

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE fcpxml>
+
+<fcpxml version="1.15">
+    <resources>
+        <format id="r1" name="FFVideoFormat3840x2160p60" frameDuration="100/6000s" width="3840" height="2160" colorSpace="1-1-1 (Rec. 709)" />
+        <asset id="r2" name="DJI_20261107210535_0003_D" uid="2D0C961E60FCB68CE7A464E0CAFB44E4" start="1158317160/30000s" duration="74993919/30000s" hasVideo="1" format="r3" hasAudio="1" videoSources="1" audioSources="1" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="2D0C961E60FCB68CE7A464E0CAFB44E4" src="file:///Fixtures/DJI_20261107210535_0003_D.MP4" />
+        </asset>
+        <format id="r3" frameDuration="1001/30000s" width="2688" height="1512" colorSpace="1-1-1 (Rec. 709)" />
+        <format id="r6" name="FFVideoFormat1080p5994" frameDuration="1001/60000s" width="1920" height="1080" colorSpace="1-1-1 (Rec. 709)" />
+        <asset id="r10" name="DJI_20261107214743_0004_D" uid="EEC6E5372EACDCCCA558F21D9B7F18F5" start="4303855556/60000s" duration="181281100/60000s" hasVideo="1" format="r6" hasAudio="1" videoSources="1" audioSources="2" audioChannels="2" audioRate="48000">
+            <media-rep kind="original-media" sig="EEC6E5372EACDCCCA558F21D9B7F18F5" src="file:///Fixtures/DJI_20261107214743_0004_D.MP4" />
+        </asset>
+    </resources>
+    <library>
+        <event name="11-11-26" uid="D0FE0704-C3CC-41E1-B843-F0B421907F80">
+            <project name="Detached Audio" uid="51B6CA7D-AC62-4F82-8B81-25F8203C2752" modDate="2026-11-22 17:42:43 -0600">
+                <sequence format="r1" duration="399820800/384000s" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
+                    <spine>
+                        <clip offset="181728000/384000s" name="DJI_20261107214743_0004_D" start="2205362159/30000s" duration="7385600/384000s" format="r6" tcFormat="DF">
+                            <conform-rate srcFrameRate="59.94" />
+                            <video ref="r10" offset="4303855556/60000s" start="4303855556/60000s" duration="181281100/60000s" />
+                            <clip lane="-1" offset="2205362159/30000s" name="DJI_20261107214743_0004_D" start="2205362159/30000s" duration="7385600/384000s" tcFormat="DF">
+                                <conform-rate srcFrameRate="59.94" />
+                                <adjust-transform position="-47.6548 25.9333" scale="0.407316 0.407316" />
+                                <adjust-volume amount="-5dB" />
+                                <gap name="Gap" offset="4303855556/60000s" start="4303855556/60000s" duration="181281100/60000s">
+                                    <audio ref="r10" lane="-2" offset="51646266672/720000s" start="51646266672/720000s" duration="2175373200/720000s" srcID="2" role="dialogue.dialogue-2" srcCh="1, 2" />
+                                    <audio ref="r10" lane="-1" offset="51646266672/720000s" start="51646266672/720000s" duration="2175373200/720000s" role="dialogue.dialogue-1" srcCh="1, 2" />
+                                </gap>
+                                <audio-channel-source srcCh="1" role="dialogue.dialogue-1" />
+                                <audio-channel-source srcCh="2" role="dialogue.dialogue-2" />
+                                <audio-channel-source srcCh="3" role="dialogue.dialogue-3" active="0" />
+                                <audio-channel-source srcCh="4" role="dialogue.dialogue-4" active="0" />
+                            </clip>
+                        </clip>
+                        <asset-clip ref="r2" offset="189113600/384000s" name="DJI_20261107210535_0003_액션캠" start="799131333/20000s" duration="4883200/384000s" format="r3" tcFormat="DF" audioRole="dialogue">
+                            <conform-rate srcFrameRate="29.97" />
+                            <adjust-volume amount="-96dB" />
+                            <clip lane="-1" offset="799131333/20000s" name="DJI_20261107214743_0004_D" start="441267827/6000s" duration="4883200/384000s" format="r6" tcFormat="DF">
+                                <conform-rate srcFrameRate="59.94" />
+                                <adjust-transform position="-47.6548 25.9333" scale="0.407316 0.407316" />
+                                <adjust-volume amount="-5dB" />
+                                <gap name="Gap" offset="4303855556/60000s" start="4303855556/60000s" duration="181281100/60000s">
+                                    <audio ref="r10" lane="-2" offset="51646266672/720000s" start="51646266672/720000s" duration="2175373200/720000s" srcID="2" role="dialogue.dialogue-2" srcCh="1, 2" />
+                                    <audio ref="r10" lane="-1" offset="51646266672/720000s" start="51646266672/720000s" duration="2175373200/720000s" role="dialogue.dialogue-1" srcCh="1, 2" />
+                                </gap>
+                                <audio-channel-source srcCh="1" role="dialogue.dialogue-1" />
+                                <audio-channel-source srcCh="2" role="dialogue.dialogue-2" />
+                                <audio-channel-source srcCh="3" role="dialogue.dialogue-3" active="0" />
+                                <audio-channel-source srcCh="4" role="dialogue.dialogue-4" active="0" />
+                            </clip>
+                        </asset-clip>
+                    </spine>
+                </sequence>
+            </project>
+        </event>
+    </library>
+</fcpxml>

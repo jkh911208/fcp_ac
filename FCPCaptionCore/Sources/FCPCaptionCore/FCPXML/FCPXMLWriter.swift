@@ -435,14 +435,32 @@ public struct FCPXMLWriter: Sendable {
 
     // MARK: - Locating
 
+    /// Finds the element a `ClipRef` was read from.
+    ///
+    /// `ref` and `offset` used to be the whole identity, which breaks on a `<clip>` wrapper — a
+    /// detached-audio clip has no `ref` at all, and its `offset` is in its parent's time, so two
+    /// of them under different parents can share one. Lane, `start` and `duration` narrow it
+    /// down; if it is still ambiguous that is an error, never a coin toss, because the loser
+    /// would get someone else's captions.
     private func element(for clip: ClipRef, in root: XMLElement) throws -> XMLElement {
-        let candidates = try root.nodes(forXPath: ".//\(clip.element)").compactMap { $0 as? XMLElement }
-        let match = candidates.first { candidate in
-            guard candidate.attribute(forName: "ref")?.stringValue == clip.assetID else { return false }
-            let offset = (try? candidate.attribute(forName: "offset")?.stringValue.map(FCPTime.parse)) ?? nil
-            return (offset ?? .zero) == clip.offset
+        func time(_ element: XMLElement, _ attribute: String) -> FCPTime? {
+            (try? element.attribute(forName: attribute)?.stringValue.map(FCPTime.parse)) ?? nil
         }
-        guard let match else { throw FCPXMLError.clipNotFound(clip.name) }
+        let candidates = try root.nodes(forXPath: ".//\(clip.element)").compactMap { $0 as? XMLElement }
+            .filter { candidate in
+                (candidate.attribute(forName: "ref")?.stringValue ?? "") == clip.assetID
+                    && (time(candidate, "offset") ?? .zero) == clip.offset
+            }
+        guard candidates.count > 1 else {
+            guard let match = candidates.first else { throw FCPXMLError.clipNotFound(clip.name) }
+            return match
+        }
+        let narrowed = candidates.filter { candidate in
+            candidate.attribute(forName: "lane")?.stringValue.flatMap(Int.init) == clip.lane
+                && time(candidate, "duration") == clip.duration
+                && (time(candidate, "start").map { $0 == clip.start } ?? true)
+        }
+        guard narrowed.count == 1, let match = narrowed.first else { throw FCPXMLError.clipNotFound(clip.name) }
         return match
     }
 

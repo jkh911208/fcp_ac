@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-11-04 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+**Last updated:** 2026-11-25 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
 Signed, notarized and published from this Mac; GitHub only hosts the file.
@@ -462,6 +462,33 @@ security-scoped bookmark for the camera files, but the document FCP hands over o
 readable by the sandboxed extension. The individual §2h edge cases (an audio angle that starts
 later, the whole multicam from the browser) were not reported separately. Compound clips
 (`ref-clip` into a `<media><sequence>`) are still not read and most likely fail the same way.
+
+### Detached audio (2026-11-25, user's report)
+
+In a real project **no caption appeared from 7:53 to 13:44**, where only detached audio
+plays. Detaching audio in Final Cut Pro turns a clip into ref-less wrappers: the picture becomes a
+`<clip>` holding a bare `<video ref=…>`, the sound a connected `<clip lane="-1">` holding a `<gap>`
+with `<audio ref=…>` elements anchored to it. The reader looked for a file only in the clip's own
+`ref`, found none, and the pipeline skipped all sixteen wrappers (350 s of dialogue) as
+"클립의 원본 미디어 경로를 찾지 못했습니다".
+
+The reader now follows a ref-less `<clip>` into its own story elements (`gap`, `video`, `audio`)
+and the `<audio>` anchored to them, picks the one playing where the clip starts, and takes its
+asset's file, bookmark, format and timecode. Each layer's time is mapped (`t - offset + start`),
+not assumed — in the real export every `offset` equals its `start`, so the wrapper's time is the
+asset's. A wrapper with no `<audio>` at all — the picture half — is now `.noAudio` instead of a
+path error. Audio that does not cover the clip's start, or that has no `start` to map with, is
+`.wrappedAudioUnreadable`, with a Korean reason; neither was seen in the real project.
+
+The writer used to identify a clip by `ref` + `offset` alone, which cannot find a ref-less clip at
+all and can confuse two wrappers that share a parent-relative offset. It now also compares lane,
+`start` and `duration`, and refuses (`clipNotFound`) rather than guessing when that still leaves
+more than one.
+
+Fixture `Fixtures/detached_audio.fcpxml` (FCPXML 1.15, validates against `FCPXMLv1_15.dtd`), tests
+in `DetachedAudioTests`. Run against the full source export: all 16 wrappers find the camera file,
+and every captionable clip of the 105 is found by the writer. **Not yet verified in Final Cut Pro**
+— `docs/MANUAL_TEST.md` §2i.
 
 ## Next
 

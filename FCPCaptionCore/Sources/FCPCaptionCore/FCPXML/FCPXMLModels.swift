@@ -71,7 +71,8 @@ public struct ClipRef: Sendable, Equatable {
     public var audibleDuration: FCPTime
     public var lane: Int?
     /// The original media on disk, from the asset's `media-rep`. For a multicam clip, the media of
-    /// the angle its audio is taken from.
+    /// the angle its audio is taken from; for a `<clip>` wrapper (detached audio), the asset its
+    /// inner `<audio>` element plays.
     public var mediaURL: URL?
     /// The security-scoped bookmark Final Cut Pro puts inside `media-rep`.
     ///
@@ -115,6 +116,9 @@ public struct ClipRef: Sendable, Equatable {
         /// A multicam clip whose audio angle has no media file where the clip starts: the angle
         /// is a gap there, or holds something other than a plain clip.
         case multicamAngleUnreadable
+        /// A `<clip>` with no `ref` of its own — detached audio, wrapped by Final Cut Pro — whose
+        /// `<audio>` elements do not cover the point where the clip starts.
+        case wrappedAudioUnreadable
 
         public var korean: String {
             switch self {
@@ -127,6 +131,8 @@ public struct ClipRef: Sendable, Equatable {
                 return "오디오가 없는 클립입니다"
             case .multicamAngleUnreadable:
                 return "멀티캠 오디오 앵글에 이 구간의 원본 영상이 없어 건너뜁니다. 다른 앵글을 오디오로 고르면 자막을 만들 수 있습니다"
+            case .wrappedAudioUnreadable:
+                return "분리된 오디오 클립의 시작 지점에 원본 오디오가 없어 건너뜁니다. 클립의 시작을 오디오가 있는 곳까지 다듬으면 자막을 만들 수 있습니다"
             }
         }
     }
