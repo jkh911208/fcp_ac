@@ -111,7 +111,12 @@ public struct FCPXMLWriter: Sendable {
             ? 0
             : placements(for: captions, in: unbounded, frameDuration: frameDuration).count - all.count
 
-        let titleLane = form == .both ? lane + 1 : lane
+        // Captions have lanes of their own; a title shares its lanes with every connected clip
+        // on the same parent, so it goes above the highest of those. Sharing one was seen in Final
+        // Cut Pro (2026-11-26): titles on lane 1 of a clip that also carried a picture-in-picture
+        // on lane 1 showed in the timeline and never in the viewer.
+        let titleLane = self.lane.map { form == .both ? $0 + 1 : $0 }
+            ?? max(form == .both ? lane + 1 : lane, laneAbovePicture(in: target))
         var effectID: String?
         if form.writesTitles { effectID = try titleEffectID(in: root) }
 
@@ -583,6 +588,15 @@ public struct FCPXMLWriter: Sendable {
             .compactMap(Int.init)
         guard let highest = used.max() else { return 1 }
         return max(1, highest + 1)
+    }
+
+    /// The lowest lane above every positive lane an anchored item other than a caption already
+    /// uses on this element — connected clips, titles, generators. Never below 1.
+    private func laneAbovePicture(in element: XMLElement) -> Int {
+        let used = (element.children ?? []).compactMap { $0 as? XMLElement }
+            .filter { $0.name != "caption" }
+            .compactMap { $0.attribute(forName: "lane")?.stringValue.flatMap(Int.init) }
+        return max(1, (used.max() ?? 0) + 1)
     }
 
     /// `text-style-def` ids are document-scoped, so new ones continue past whatever FCP already

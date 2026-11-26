@@ -519,6 +519,17 @@ edit with no respective media" at `spine/clip[1]` — the project's first `<clip
 earlier import as well, and the app writes nothing to it. Whether the captions line up with the
 speech was not reported separately.
 
+**Titles under a picture-in-picture did not show (2026-11-26, same test).** Where the detached
+picture was connected above its parent as a picture-in-picture on lane 1, the titles — also written
+to lane 1 of that parent — appeared in the timeline and never in the viewer. Captions keep lanes of
+their own (the reference export has a caption and a title both on lane 1), but a title shares its
+lanes with every connected clip on the same parent. Titles now go above the highest positive lane
+any non-caption anchored item uses on the parent; with nothing connected above, that is still lane
+1. Fixture extended with that parent, real FCP output like the rest. On the full source export, a
+title for each of the 66 captionable clips shares a lane with no overlapping item, and the document
+validates. **Not yet verified in Final Cut Pro.** This also affected titles on any spine clip with
+b-roll connected above it, before any of today's changes.
+
 ## Next
 
 - **M4 (OpenRouter engine, Keychain, Settings)** if the user ever wants it — see below.

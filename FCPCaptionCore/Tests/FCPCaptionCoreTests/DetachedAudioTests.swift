@@ -7,10 +7,12 @@ import Testing
 /// `<clip>` with no `ref`, so the reader found no file and skipped it with
 /// "원본 미디어 경로를 찾지 못했습니다".
 ///
-/// The spine holds two things, four clips in all:
+/// The spine holds three things, seven clips in all:
 /// 1. a `<clip>` that is only a picture (`<video ref="r10">`), with its detached audio beneath it
 ///    as a `<clip lane="-1">` → `<gap>` → `<audio ref="r10">`;
-/// 2. a muted action-cam `asset-clip` with another piece of that same detached audio beneath it.
+/// 2. a muted action-cam `asset-clip` with another piece of that same detached audio beneath it;
+/// 3. another muted action-cam clip carrying both halves of the detached clip: the audio on lane
+///    -1 and the picture, shrunk to a picture-in-picture, on lane 1.
 @Suite("detached audio")
 struct DetachedAudioTests {
     private static let audioFile = "DJI_20261107214743_0004_D.MP4"
@@ -50,9 +52,9 @@ struct DetachedAudioTests {
     @Test("both detached-audio clips are read, and both find the camera file")
     func findsTheDetachedAudiosFile() throws {
         let all = try clips()
-        #expect(all.count == 4)
+        #expect(all.count == 7)
         let audio = try detached
-        #expect(audio.count == 2)
+        #expect(audio.count == 3)
         for clip in audio {
             #expect(clip.element == "clip")
             #expect(clip.assetID == "")
@@ -81,6 +83,10 @@ struct DetachedAudioTests {
         #expect(picture.lane == nil)
         #expect(picture.skipReason == .noAudio)
         #expect(!picture.hasAudio)
+        // The same, connected as a picture-in-picture.
+        let inset = try clips()[6]
+        #expect(inset.lane == 1)
+        #expect(inset.skipReason == .noAudio)
     }
 
     @Test("a muted parent stays muted, and does not mute the audio detached beneath it")
@@ -214,6 +220,8 @@ struct DetachedAudioTests {
         defer { withExtendedLifetime(document) {} }
         #expect(try root.nodes(forXPath: "//clip[@lane='-1']/title").isEmpty)
         let title = try #require(try root.nodes(forXPath: "//spine/asset-clip/title").first as? XMLElement)
+        // Nothing else is connected above this parent, so lane 1 is free.
+        #expect(title.attribute(forName: "lane")?.stringValue == "1")
         let offset = try FCPTime.parse(try #require(title.attribute(forName: "offset")?.stringValue))
         let duration = try FCPTime.parse(try #require(title.attribute(forName: "duration")?.stringValue))
         #expect(offset.aligned(to: FCPTime(1001, 30000)) == offset)
@@ -237,6 +245,39 @@ struct DetachedAudioTests {
         let parent = try clips(written.document)[0]
         let caption = try #require(parent.captions.first)
         #expect(caption.offset + caption.duration <= parent.start + parent.duration)
+    }
+
+    @Test("a title goes above a picture-in-picture on the same parent, a caption is unaffected")
+    func titleClearsThePictureInPicture() throws {
+        // Seen in Final Cut Pro: titles on lane 1 next to a picture-in-picture on lane 1 showed in
+        // the timeline and never in the viewer.
+        let data = try Fixture.data("detached_audio.fcpxml")
+        let written = try write(to: try clips(data)[5], in: data, form: .both)
+        #expect(written.written == 1)
+        let (document, root) = try root(of: written.document)
+        defer { withExtendedLifetime(document) {} }
+        let parent = try #require(try root.nodes(forXPath: "//spine/asset-clip[2]").first as? XMLElement)
+        let title = try #require(parent.elements(forName: "title").first)
+        #expect(title.attribute(forName: "lane")?.stringValue == "2")
+        // Captions have lanes of their own, which no connected clip occupies.
+        let caption = try #require(parent.elements(forName: "caption").first)
+        #expect(caption.attribute(forName: "lane")?.stringValue == "1")
+    }
+
+    @Test("a title on a spine clip goes above its connected b-roll")
+    func titleClearsBRollOnTheSpine() throws {
+        // `retimed_and_connected.fcpxml`: spine clip "03" has a <video lane="1"> over it, and a
+        // synced mic, "01-8", on lane -1 beneath it.
+        let data = try Fixture.data("retimed_and_connected.fcpxml")
+        let clips = try FCPXMLReader().read(data: data).clips
+        let index = try #require(clips.firstIndex { $0.name == "01-8" })
+        let written = try write(to: clips[index], in: data, form: .title)
+        let (document, root) = try root(of: written.document)
+        defer { withExtendedLifetime(document) {} }
+        let title = try #require(try root.nodes(forXPath: "//spine/*/title").first as? XMLElement)
+        let parent = try #require(title.parent as? XMLElement)
+        #expect(parent.elements(forName: "video").first?.attribute(forName: "lane")?.stringValue == "1")
+        #expect(title.attribute(forName: "lane")?.stringValue == "2")
     }
 
     @Test("an ordinary connected clip's captions also go on its parent")

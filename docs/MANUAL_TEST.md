@@ -125,6 +125,9 @@ separately from its picture.
 - [x] After import the captions are on the timeline, sitting on the clip above the detached audio
       (the first attempt wrote them inside the detached clip, and Final Cut Pro dropped every one)
       (2026-11-26, user's report)
+- [ ] Where the detached picture sits above as a picture-in-picture, the titles show **in the
+      viewer**, not only in the timeline (they used to share its lane and were never drawn)
+- [ ] A title over b-roll connected above a spine clip shows on top of the b-roll
 - The import may warn "Invalid edit with no respective media" for a `<clip duration="0s">` holding
   only a gap. That is a zero-length leftover already in the project, which FCP drops on any
   re-import; the app does not write to it. Seen in the same project on both imports.

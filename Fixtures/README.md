@@ -127,7 +127,9 @@ validates against Apple's `FCPXMLv1_14.dtd`.
 Cut from a real project the user edited (2026-11-25, Final Cut Pro, FCPXML 1.15), in which no
 caption appeared over 5.8 minutes of detached audio. Kept: two spine items and their formats and
 assets — a `<clip>` that is only a picture, with its detached audio connected beneath it, and a
-muted action-cam `asset-clip` with another piece of the same detached audio beneath it. Removed:
+muted action-cam `asset-clip` with another piece of the same detached audio beneath it, and (added
+2026-11-26) a third muted action-cam clip carrying both halves of a detached clip — the audio on
+lane -1, the picture on lane 1 as a picture-in-picture. Removed:
 everything else, every bookmark and `metadata` block, the analysis markers, the library location,
 and every title — they were the user's own transcript. Media paths became `/Fixtures/…` and the
 project name `Detached Audio`. Nothing in a kept element was changed otherwise, and the result
@@ -143,3 +145,4 @@ validates against Apple's `FCPXMLv1_15.dtd`.
 | Time bases | every layer has `offset` = `start`, so the wrapper's time is the asset's timecode |
 | Where the detached audio hangs | under whatever spine item is above it — here a muted `asset-clip` from another camera |
 | Where captions for it can go | **not inside it**: titles written into connected clips were all dropped on import (2026-11-26), and no real export has an anchored item inside another. They go on the parent, at `offset` + the caption's time |
+| Which lane a title can take | **not one a connected clip uses**: titles on lane 1 beside a lane-1 picture-in-picture showed in the timeline but never in the viewer (2026-11-26). Captions have lanes of their own |

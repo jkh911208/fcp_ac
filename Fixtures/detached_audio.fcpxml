@@ -52,6 +52,28 @@
                                 <audio-channel-source srcCh="4" role="dialogue.dialogue-4" active="0" />
                             </clip>
                         </asset-clip>
+                        <asset-clip ref="r2" offset="228921600/384000s" name="DJI_20261107210535_0003_액션캠" start="48295247/1200s" duration="8300800/384000s" format="r3" tcFormat="DF" audioRole="dialogue">
+                            <conform-rate srcFrameRate="29.97" />
+                            <adjust-volume amount="-96dB" />
+                            <clip lane="-1" offset="48295247/1200s" name="DJI_20261107214743_0004_D" start="1476682207/20000s" duration="124512000/5760000s" format="r6" tcFormat="DF">
+                                <conform-rate srcFrameRate="59.94" />
+                                <adjust-transform position="-47.6548 25.9333" scale="0.407316 0.407316" />
+                                <adjust-volume amount="-5dB" />
+                                <gap name="Gap" offset="4303855556/60000s" start="4303855556/60000s" duration="181281100/60000s">
+                                    <audio ref="r10" lane="-2" offset="51646266672/720000s" start="51646266672/720000s" duration="2175373200/720000s" srcID="2" role="dialogue.dialogue-2" srcCh="1, 2" />
+                                    <audio ref="r10" lane="-1" offset="51646266672/720000s" start="51646266672/720000s" duration="2175373200/720000s" role="dialogue.dialogue-1" srcCh="1, 2" />
+                                </gap>
+                                <audio-channel-source srcCh="1" role="dialogue.dialogue-1" />
+                                <audio-channel-source srcCh="2" role="dialogue.dialogue-2" />
+                                <audio-channel-source srcCh="3" role="dialogue.dialogue-3" active="0" />
+                                <audio-channel-source srcCh="4" role="dialogue.dialogue-4" active="0" />
+                            </clip>
+                            <clip lane="1" offset="48295247/1200s" name="DJI_20261107214743_0004_D" start="1476682207/20000s" duration="8300800/384000s" format="r6" tcFormat="DF">
+                                <conform-rate srcFrameRate="59.94" />
+                                <adjust-transform position="-47.6548 25.9333" scale="0.407316 0.407316" />
+                                <video ref="r10" offset="4303855556/60000s" start="4303855556/60000s" duration="181281100/60000s" />
+                            </clip>
+                        </asset-clip>
                     </spine>
                 </sequence>
             </project>
