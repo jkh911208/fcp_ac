@@ -142,3 +142,4 @@ validates against Apple's `FCPXMLv1_15.dtd`.
 | Audio components | one `<audio>` per component, on lanes `-1` and `-2` (`dialogue-1`, `dialogue-2`, the second with `srcID="2"`), both on the same asset |
 | Time bases | every layer has `offset` = `start`, so the wrapper's time is the asset's timecode |
 | Where the detached audio hangs | under whatever spine item is above it — here a muted `asset-clip` from another camera |
+| Where captions for it can go | **not inside it**: titles written into connected clips were all dropped on import (2026-11-26), and no real export has an anchored item inside another. They go on the parent, at `offset` + the caption's time |

@@ -485,10 +485,32 @@ all and can confuse two wrappers that share a parent-relative offset. It now als
 `start` and `duration`, and refuses (`clipNotFound`) rather than guessing when that still leaves
 more than one.
 
+**First test in Final Cut Pro (2026-11-26): still no captions there.** The logs showed the reader
+fix working — all sixteen wrappers were transcribed from the right second of the file — and the
+re-exported project showed where they went: titles had been written to 21 connected clips (the
+detached audio, and ordinary synced clips on lane 1 too), and **every one was gone after import**,
+while the 106 on spine clips survived. Final Cut Pro keeps anchored items only on clips in a
+storyline and drops those anchored to a connected clip without a word. Across every real export in
+hand — over 900 anchored items — not one sits inside another anchored item.
+
+This means **connected clips have never been captioned in Final Cut Pro**, detached or not. The
+reader has found them since 2026-09-09 and the writer put their captions inside them, a valid
+document by the DTD that FCP silently drops. Now a connected clip's captions are attached to the
+clip it hangs from, in that clip's time (a connected clip's `offset` is where its `start` falls in
+its parent), with a title's `offset` on the parent's own format grid. They are kept inside the
+parent's span: in the real project 15 s of 801 s of connected clips overhang their parent, and a
+caption that would have to anchor outside it is dropped and counted as skipped rather than placed
+somewhere unverified.
+
+Open: when a parent is audible itself *and* a connected clip under it is (camera audio plus a synced
+mic, both unmuted), both are captioned onto the parent. Captions of one language already avoid each
+other; **titles do not**, so the same sentence can appear twice. Not seen in this project, where
+every parent of a detached clip is muted.
+
 Fixture `Fixtures/detached_audio.fcpxml` (FCPXML 1.15, validates against `FCPXMLv1_15.dtd`), tests
 in `DetachedAudioTests`. Run against the full source export: all 16 wrappers find the camera file,
-and every captionable clip of the 105 is found by the writer. **Not yet verified in Final Cut Pro**
-— `docs/MANUAL_TEST.md` §2i.
+and writing a title for each of the 66 captionable clips writes 66, none inside a connected clip,
+in a document that validates. **Not yet verified in Final Cut Pro** — `docs/MANUAL_TEST.md` §2i.
 
 ## Next
 

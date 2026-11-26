@@ -162,25 +162,108 @@ struct DetachedAudioTests {
         #expect(clip.skipReason == .wrappedAudioUnreadable)
     }
 
-    @Test("captions written to a detached-audio clip read back on that clip")
-    func roundTrip() throws {
-        let data = try Fixture.data("detached_audio.fcpxml")
-        let clip = try #require(try clips(data).first { $0.lane == -1 })
-        let written = try FCPXMLWriter().write(
-            [Caption(lines: ["안녕하세요"], start: 0.5, end: 1.8)], to: clip, inDocument: data)
-        #expect(written.written == 1)
+    // MARK: - Writing
 
-        let reread = try clips(written.document)
-        let target = try #require(reread.first { $0.lane == -1 })
-        #expect(target.isCaptionable)
-        #expect(target.mediaURL == clip.mediaURL)
-        let caption = try #require(target.captions.first)
+    /// Writes one caption, 0.5–1.8s into `clip`, and returns the written document.
+    private func write(
+        to clip: ClipRef, in data: Data, form: FCPXMLWriter.Form = .caption
+    ) throws -> FCPXMLWriter.WriteResult {
+        try FCPXMLWriter(form: form).write(
+            [Caption(lines: ["안녕하세요"], start: 0.5, end: 1.8)], to: clip, inDocument: data)
+    }
+
+    private func root(of data: Data) throws -> (XMLDocument, XMLElement) {
+        // The document is returned too: a root element outlives a freed document, but `//`
+        // XPath on it then fails with "invalid type".
+        let document = try XMLDocument(data: data)
+        return (document, try #require(document.rootElement()))
+    }
+
+    @Test("a detached-audio clip's captions go on the clip it hangs from, at the same moment")
+    func captionsGoOnTheParent() throws {
+        // Final Cut Pro drops anything anchored to a connected clip on import: in the real
+        // project every title written to one vanished. Before this, the caption landed inside
+        // the <clip lane="-1"> — valid by the DTD, and gone from the timeline.
+        let data = try Fixture.data("detached_audio.fcpxml")
+        let before = try clips(data)
+        let detached = before[1]
+        let written = try write(to: detached, in: data)
+        #expect(written.written == 1)
+        #expect(written.skipped == 0)
+
+        let after = try clips(written.document)
+        #expect(after[1].captions.isEmpty, "a caption inside a connected clip is dropped by FCP")
+        let caption = try #require(after[0].captions.first)
         #expect(caption.text == "안녕하세요")
-        #expect(abs((caption.offset - clip.start).seconds - 0.5) < 0.02)
+        // In the parent's time the detached clip starts at its own `offset`.
+        #expect(abs((caption.offset - detached.offset).seconds - 0.5) < 0.02)
         // Nothing else moved: the same clips, captions aside.
-        var unchanged = reread
+        var unchanged = after
         for index in unchanged.indices { unchanged[index].captions = [] }
-        #expect(unchanged == (try clips(data)))
+        #expect(unchanged == before)
+    }
+
+    @Test("a title for detached audio sits on the parent's own frame grid")
+    func titleGridIsTheParents() throws {
+        // The second detached clip hangs from a 29.97 action-cam clip; the audio itself is
+        // 59.94. A title's position is checked against its parent's grid, its length against the
+        // 60p sequence's.
+        let data = try Fixture.data("detached_audio.fcpxml")
+        let written = try write(to: try clips(data)[3], in: data, form: .title)
+        let (document, root) = try root(of: written.document)
+        defer { withExtendedLifetime(document) {} }
+        #expect(try root.nodes(forXPath: "//clip[@lane='-1']/title").isEmpty)
+        let title = try #require(try root.nodes(forXPath: "//spine/asset-clip/title").first as? XMLElement)
+        let offset = try FCPTime.parse(try #require(title.attribute(forName: "offset")?.stringValue))
+        let duration = try FCPTime.parse(try #require(title.attribute(forName: "duration")?.stringValue))
+        #expect(offset.aligned(to: FCPTime(1001, 30000)) == offset)
+        #expect(duration.aligned(to: FCPTime(100, 6000)) == duration)
+    }
+
+    @Test("captions past the end of the parent are skipped and counted")
+    func captionsPastTheParentAreCounted() throws {
+        // Shorten the parent to one second: the caption at 0.5–1.8s is trimmed to its end, and
+        // one starting at 3s has no place to anchor.
+        let data = try edited { root in
+            try shift("//spine/clip", "duration", in: root) { _ in FCPTime(1, 1) }
+        }
+        let detached = try clips(data)[1]
+        let written = try FCPXMLWriter().write(
+            [Caption(lines: ["안녕하세요"], start: 0.5, end: 1.8),
+             Caption(lines: ["반갑습니다"], start: 3, end: 4)],
+            to: detached, inDocument: data)
+        #expect(written.written == 1)
+        #expect(written.skipped == 1)
+        let parent = try clips(written.document)[0]
+        let caption = try #require(parent.captions.first)
+        #expect(caption.offset + caption.duration <= parent.start + parent.duration)
+    }
+
+    @Test("an ordinary connected clip's captions also go on its parent")
+    func ordinaryConnectedClip() throws {
+        // `retimed_and_connected.fcpxml`: a synced mic, an asset-clip on lane -1 under the
+        // spine clip "03".
+        let data = try Fixture.data("retimed_and_connected.fcpxml")
+        let before = try FCPXMLReader().read(data: data).clips
+        let index = try #require(before.firstIndex { $0.lane == -1 && $0.isCaptionable })
+        let written = try write(to: before[index], in: data)
+        #expect(written.written == 1)
+        let after = try FCPXMLReader().read(data: written.document).clips
+        #expect(after[index].captions.isEmpty)
+        let parent = try #require(after[..<index].last { $0.lane == nil })
+        let caption = try #require(parent.captions.first)
+        #expect(abs((caption.offset - before[index].offset).seconds - 0.5) < 0.02)
+    }
+
+    @Test("a clip on the spine still carries its own captions")
+    func spineClipIsUnchanged() throws {
+        let data = try Fixture.data("detached_audio.fcpxml")
+        var clip = try clips(data)[2]
+        clip.skipReason = nil   // muted in the fixture; the writer does not care
+        let written = try write(to: clip, in: data)
+        let after = try clips(written.document)
+        #expect(after[2].captions.count == 1)
+        #expect(abs((try #require(after[2].captions.first).offset - clip.start).seconds - 0.5) < 0.02)
     }
 
     @Test("two identical wrappers are an error, not a coin toss")
@@ -199,10 +282,11 @@ struct DetachedAudioTests {
     func writtenDocumentIsValid() throws {
         let data = try Fixture.data("detached_audio.fcpxml")
         #expect(try Fixture.DTD.validate(data) == nil)
-        let clip = try #require(try clips(data).first { $0.lane == -1 })
-        let written = try FCPXMLWriter(form: .both).write(
-            [Caption(lines: ["안녕하세요"], start: 0.5, end: 1.8)], to: clip, inDocument: data)
-        #expect(try Fixture.DTD.validate(written.document) == nil)
+        for clip in try clips(data).filter({ $0.lane == -1 }) {
+            let written = try write(to: clip, in: data, form: .both)
+            #expect(written.written == 1)
+            #expect(try Fixture.DTD.validate(written.document) == nil)
+        }
     }
 
     @Test("the fixture carries no bookmark, no real path and none of the user's transcript")

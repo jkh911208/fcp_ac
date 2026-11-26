@@ -95,13 +95,21 @@ public struct FCPXMLWriter: Sendable {
         guard let root = xml.rootElement(), root.name == "fcpxml" else { throw FCPXMLError.notFCPXML }
 
         let frameDuration = try frameDuration(in: root, clip: clip)
-        let target = try element(for: clip, in: root)
+        let anchor = try self.anchor(for: clip, located: try element(for: clip, in: root), root: root)
+        let target = anchor.element
         let lane = try self.lane ?? freeLane(in: target)
 
         var nextStyleID = try nextStyleIdentifier(in: root)
         let occupied = occupiedRanges(in: target, language: language, frameDuration: frameDuration)
-        let all = placements(for: captions, clip: clip, frameDuration: frameDuration)
+        let all = placements(for: captions, in: anchor, frameDuration: frameDuration)
         let free = all.compactMap { avoiding(occupied, $0, frameDuration: frameDuration) }
+        // Captions inside the clip that its parent's span cut off. Not the ones past the clip's
+        // own end — those never had a place on the timeline.
+        var unbounded = anchor
+        unbounded.bounds = anchor.origin..<(anchor.origin + clip.duration)
+        let cutOff = anchor.bounds == unbounded.bounds
+            ? 0
+            : placements(for: captions, in: unbounded, frameDuration: frameDuration).count - all.count
 
         let titleLane = form == .both ? lane + 1 : lane
         var effectID: String?
@@ -116,10 +124,10 @@ public struct FCPXMLWriter: Sendable {
         // So the position is in the clip's own time base and the length is in the sequence's.
         // Aligning both to one grid earns "The item is not on an edit frame boundary" from the
         // importer — first for every offset, then for every duration.
-        let titleGrid = clip.assetFrameDuration ?? frameDuration
+        let titleGrid = anchor.titleGrid ?? frameDuration
         let titlePlacements = titleGrid == frameDuration
             ? free
-            : placements(for: captions, clip: clip, frameDuration: titleGrid)
+            : placements(for: captions, in: anchor, frameDuration: titleGrid)
                 .compactMap { avoiding(occupied, $0, frameDuration: titleGrid) }
 
         for placement in free where form.writesCaptions {
@@ -163,7 +171,7 @@ public struct FCPXMLWriter: Sendable {
         return WriteResult(
             document: xml.xmlData(options: [.nodePrettyPrint]),
             written: free.count,
-            skipped: all.count - free.count
+            skipped: all.count - free.count + cutOff
         )
     }
 
@@ -173,6 +181,90 @@ public struct FCPXMLWriter: Sendable {
         var caption: Caption
         var start: FCPTime
         var end: FCPTime
+    }
+
+    /// Where captions for a clip are attached, and in which time base.
+    private struct Anchor {
+        /// The element the captions become children of.
+        var element: XMLElement
+        /// The time, in `element`'s base, at which caption second 0 falls — where the clip starts.
+        var origin: FCPTime
+        /// Captions are kept inside this span of `element`'s time.
+        var bounds: Range<FCPTime>
+        /// The grid a title's `offset` must sit on: `element`'s own format. Nil means the sequence's.
+        var titleGrid: FCPTime?
+    }
+
+    /// Decides which element carries a clip's captions.
+    ///
+    /// Normally the clip itself. A **connected** clip cannot carry them: Final Cut Pro only keeps
+    /// anchored items on clips in a storyline, and silently drops any anchored to a connected
+    /// clip on import. Seen in a real project (2026-11-25): titles written to 21 connected clips —
+    /// detached audio and a synced mic among them — all vanished, while the 106 on spine clips
+    /// survived. Across every real export in hand, over 900 anchored items, not one sits inside
+    /// another anchored item.
+    ///
+    /// So a connected clip's captions are attached to the clip it hangs from, in that clip's time:
+    /// a connected clip's `offset` is exactly where its `start` falls in its parent. They are kept
+    /// inside the parent's own span — an anchor point outside its parent is not something a real
+    /// export has shown, so a caption that would need one is dropped and counted as skipped.
+    private func anchor(for clip: ClipRef, located element: XMLElement, root: XMLElement) throws -> Anchor {
+        let own = Anchor(
+            element: element,
+            origin: clip.start,
+            bounds: clip.start..<(clip.start + clip.duration),
+            titleGrid: clip.assetFrameDuration
+        )
+        guard element.attribute(forName: "lane") != nil,
+              let parent = element.parent as? XMLElement,
+              parent.name != "spine"
+        else { return own }
+
+        let parentName = parent.name ?? "clip"
+        guard let durationRaw = parent.attribute(forName: "duration")?.stringValue else {
+            throw FCPXMLError.missingAttribute(element: parentName, attribute: "duration")
+        }
+        let parentStart = try startOf(parent, root: root)
+        let parentEnd = parentStart + (try FCPTime.parse(durationRaw))
+        let lower = max(clip.offset, parentStart)
+        let upper = max(lower, min(clip.offset + clip.duration, parentEnd))
+        return Anchor(
+            element: parent,
+            origin: clip.offset,
+            bounds: lower..<upper,
+            titleGrid: try formatFrameDuration(of: parent, root: root)
+        )
+    }
+
+    /// An element's `start`, defaulting as the reader does for an `asset-clip` — to its asset's
+    /// own start. Any other element with no `start` is an error rather than a guess.
+    private func startOf(_ element: XMLElement, root: XMLElement) throws -> FCPTime {
+        if let raw = element.attribute(forName: "start")?.stringValue { return try FCPTime.parse(raw) }
+        if element.name == "asset-clip", let resource = try resource(element.attribute(forName: "ref")?.stringValue, in: root) {
+            return try resource.attribute(forName: "start")?.stringValue.map(FCPTime.parse) ?? .zero
+        }
+        throw FCPXMLError.missingAttribute(element: element.name ?? "clip", attribute: "start")
+    }
+
+    /// The frame duration of an element's own format: its `format`, else that of the asset or
+    /// multicam it references. Nil when it has none (a gap), which means the sequence's.
+    private func formatFrameDuration(of element: XMLElement, root: XMLElement) throws -> FCPTime? {
+        var formatID = element.attribute(forName: "format")?.stringValue
+        if formatID == nil, let resource = try resource(element.attribute(forName: "ref")?.stringValue, in: root) {
+            formatID = resource.attribute(forName: "format")?.stringValue
+                ?? resource.elements(forName: "multicam").first?.attribute(forName: "format")?.stringValue
+        }
+        guard let formatID else { return nil }
+        guard let format = try resource(formatID, in: root),
+              let raw = format.attribute(forName: "frameDuration")?.stringValue
+        else { throw FCPXMLError.unknownResource(formatID) }
+        return try FCPTime.parse(raw)
+    }
+
+    private func resource(_ id: String?, in root: XMLElement) throws -> XMLElement? {
+        guard let id else { return nil }
+        return try root.nodes(forXPath: "resources/*").compactMap { $0 as? XMLElement }
+            .first { $0.attribute(forName: "id")?.stringValue == id }
     }
 
     /// Turns caption seconds into frame-aligned positions inside the clip.
@@ -186,21 +278,22 @@ public struct FCPXMLWriter: Sendable {
     ///    caption gives way, matching what `CaptionBuilder` already does in the time domain.
     private func placements(
         for captions: [Caption],
-        clip: ClipRef,
+        in anchor: Anchor,
         frameDuration: FCPTime
     ) -> [Placement] {
         let oneFrame = frameDuration
-        let clipEnd = clip.start + clip.duration
+        let clipStart = anchor.bounds.lowerBound
+        let clipEnd = anchor.bounds.upperBound
 
         var placements: [Placement] = []
         for caption in captions.sorted(by: { $0.start < $1.start }) {
-            var start = (clip.start + FCPTime(seconds: caption.start))
+            var start = (anchor.origin + FCPTime(seconds: caption.start))
                 .aligned(to: frameDuration, rounding: .down)
-            var end = (clip.start + FCPTime(seconds: caption.end))
+            var end = (anchor.origin + FCPTime(seconds: caption.end))
                 .aligned(to: frameDuration, rounding: .up)
 
-            if end <= clip.start || start >= clipEnd { continue }
-            if start < clip.start { start = clip.start }
+            if end <= clipStart || start >= clipEnd { continue }
+            if start < clipStart { start = clipStart }
             if end > clipEnd { end = clipEnd }
             if end - start < oneFrame { end = start + oneFrame }
             if end > clipEnd { continue }

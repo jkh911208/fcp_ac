@@ -76,7 +76,9 @@ Use a real edit, not a single clip on a spine.
       "클립 N개는 자막을 만들지 않았습니다"
 - [ ] A muted clip is listed there too, not captioned
 - [ ] **Connected clips are captioned** — audio synced under the picture on lane -1 is dialogue and
-      must not be skipped. Count the captions against the shots that actually have speech
+      must not be skipped. Count the captions against the shots that actually have speech.
+      They land on the clip above the connected one: Final Cut Pro drops anything anchored to a
+      connected clip itself (see §2i)
 - [ ] One bad clip does not lose the run: the rest are captioned
 
 ## 2e. The update notice
@@ -119,6 +121,8 @@ separately from its picture.
 - [ ] The captions line up with the speech in the detached audio, not drift by seconds
 - [ ] The picture half of the detached clip is not listed as a failure; at most it is named as a
       clip with no audio
+- [ ] After import the captions are on the timeline, sitting on the clip above the detached audio
+      (the first attempt wrote them inside the detached clip, and Final Cut Pro dropped every one)
 - [ ] Captions and titles imported onto detached audio show no "not on an edit frame boundary"
       error
 
