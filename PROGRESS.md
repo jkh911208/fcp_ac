@@ -527,8 +527,9 @@ lanes with every connected clip on the same parent. Titles now go above the high
 any non-caption anchored item uses on the parent; with nothing connected above, that is still lane
 1. Fixture extended with that parent, real FCP output like the rest. On the full source export, a
 title for each of the 66 captionable clips shares a lane with no overlapping item, and the document
-validates. **Not yet verified in Final Cut Pro.** This also affected titles on any spine clip with
-b-roll connected above it, before any of today's changes.
+validates. **Verified in Final Cut Pro on 2026-11-26** (user's report): the titles under the
+picture-in-picture now show in the viewer. This also affected titles on any spine clip with b-roll
+connected above it, before any of today's changes; that case was not checked separately.
 
 ## Next
 
