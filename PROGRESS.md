@@ -512,7 +512,7 @@ in `DetachedAudioTests`. Run against the full source export: all 16 wrappers fin
 and writing a title for each of the 66 captionable clips writes 66, none inside a connected clip,
 in a document that validates.
 
-**Verified in Final Cut Pro on 2026-11-26** (user's report, `docs/MANUAL_TEST.md` §2i): with
+Released as **0.1.7**. **Verified in Final Cut Pro on 2026-11-26** (user's report, `docs/MANUAL_TEST.md` §2i): with
 captions on the parent, the detached-audio stretch is captioned. The import warned once, "Invalid
 edit with no respective media" at `spine/clip[1]` — the project's first `<clip>`, a zero-length
 (`duration="0s"`) clip holding only a gap, already in the user's edit. FCP had dropped it on the
