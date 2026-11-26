@@ -76,7 +76,9 @@ Use a real edit, not a single clip on a spine.
       "클립 N개는 자막을 만들지 않았습니다"
 - [ ] A muted clip is listed there too, not captioned
 - [ ] **Connected clips are captioned** — audio synced under the picture on lane -1 is dialogue and
-      must not be skipped. Count the captions against the shots that actually have speech
+      must not be skipped. Count the captions against the shots that actually have speech.
+      They land on the clip above the connected one: Final Cut Pro drops anything anchored to a
+      connected clip itself (see §2i)
 - [ ] One bad clip does not lose the run: the rest are captioned
 
 ## 2e. The update notice
@@ -109,6 +111,29 @@ Use a project with a multicam clip whose angles were synced from separate camera
       error
 - [ ] The multicam clip dragged in **from the browser** (the whole multicam) is captioned up to
       where its audio angle ends
+
+## 2i. Detached audio
+
+Use a project where a clip's audio was detached (**Clip ▸ Detach Audio**, ⌃⇧S) and then cut
+separately from its picture.
+
+- [x] Dragging the project in captions the detached audio — no "원본 미디어 경로를 찾지 못했습니다"
+      (2026-11-26, user's report: captions appear in real FCP)
+- [ ] The captions line up with the speech in the detached audio, not drift by seconds
+- [ ] The picture half of the detached clip is not listed as a failure; at most it is named as a
+      clip with no audio
+- [x] After import the captions are on the timeline, sitting on the clip above the detached audio
+      (the first attempt wrote them inside the detached clip, and Final Cut Pro dropped every one)
+      (2026-11-26, user's report)
+- [x] Where the detached picture sits above as a picture-in-picture, the titles show **in the
+      viewer**, not only in the timeline (they used to share its lane and were never drawn)
+      (2026-11-26, user's report)
+- [ ] A title over b-roll connected above a spine clip shows on top of the b-roll
+- The import may warn "Invalid edit with no respective media" for a `<clip duration="0s">` holding
+  only a gap. That is a zero-length leftover already in the project, which FCP drops on any
+  re-import; the app does not write to it. Seen in the same project on both imports.
+- [ ] Captions and titles imported onto detached audio show no "not on an edit frame boundary"
+      error
 
 ## 2g. Installing and updating with the .pkg
 

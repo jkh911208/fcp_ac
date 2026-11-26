@@ -226,8 +226,105 @@ public struct FCPXMLReader: Sendable {
         )
         if let multicam {
             try resolveAudio(of: &clip, element: element, in: multicam, resources: resources)
+        } else if name == "clip", element.attribute(forName: "ref") == nil {
+            try resolveWrappedAudio(of: &clip, element: element, resources: resources)
         }
         return clip
+    }
+
+    /// Points a `<clip>` that has no `ref` of its own at the file its audio really plays.
+    ///
+    /// Detaching audio in Final Cut Pro turns a clip into a wrapper: the picture becomes a
+    /// `<clip>` holding a bare `<video ref=…>`, and the sound a connected `<clip lane="-1">`
+    /// holding a `<gap>` with `<audio ref=…>` elements anchored to it. Neither wrapper names an
+    /// asset, so the reader used to find no file at all — in a real project (2026-11-25) that was
+    /// sixteen detached-audio clips, 5.8 minutes of dialogue, every one skipped with
+    /// "원본 미디어 경로를 찾지 못했습니다" (`Fixtures/detached_audio.fcpxml`).
+    ///
+    /// Each layer has its own time base, and the arithmetic is the same at every one: a parent's
+    /// time `t` is `t - offset + start` in the child's. In the real export all of them coincide —
+    /// every `offset` equals its `start` — but the mapping is applied rather than assumed.
+    ///
+    /// Only the wrapper's own story elements and the audio anchored to them are looked at; a
+    /// nested clip (the detached audio under its picture) is collected and resolved on its own.
+    private func resolveWrappedAudio(of clip: inout ClipRef, element: XMLElement, resources: Resources) throws {
+        clip.mediaURL = nil
+        clip.mediaBookmark = nil
+
+        struct Source {
+            var audio: XMLElement
+            var asset: AssetInfo
+            /// Added to a time in the wrapper's base to give the time in the asset's base.
+            var shift: FCPTime
+            /// The span, in the wrapper's base, over which this audio plays.
+            var range: Range<FCPTime>
+        }
+
+        func time(_ element: XMLElement, _ attribute: String) throws -> FCPTime? {
+            try element.attribute(forName: attribute)?.stringValue.map(FCPTime.parse)
+        }
+
+        var foundAudio = false
+        var sources: [Source] = []
+        for story in element.children?.compactMap({ $0 as? XMLElement }) ?? [] {
+            guard ["gap", "video", "audio"].contains(story.name ?? "") else { continue }
+            let anchored = story.elements(forName: "audio")
+            foundAudio = foundAudio || story.name == "audio" || !anchored.isEmpty
+            // A missing `start` is not defaulted here: no real export has shown what it would mean
+            // on these elements, and a guessed time base misplaces every caption.
+            guard let storyStart = try time(story, "start"), let storyDuration = try time(story, "duration")
+            else { continue }
+            let storyOffset = try time(story, "offset") ?? .zero
+            let storyShift = storyStart - storyOffset
+            let storyRange = storyOffset..<(storyOffset + storyDuration)
+
+            if story.name == "audio", let asset = resources.assets[story.attribute(forName: "ref")?.stringValue ?? ""] {
+                sources.append(Source(audio: story, asset: asset, shift: storyShift, range: storyRange))
+            }
+            for audio in anchored {
+                guard let asset = resources.assets[audio.attribute(forName: "ref")?.stringValue ?? ""],
+                      let audioStart = try time(audio, "start"),
+                      let audioDuration = try time(audio, "duration")
+                else { continue }
+                // `offset` is in the story element's time; take it back to the wrapper's.
+                let audioOffset = try time(audio, "offset") ?? .zero
+                let lower = max(audioOffset - storyShift, storyRange.lowerBound)
+                let upper = min(audioOffset - storyShift + audioDuration, storyRange.upperBound)
+                guard lower < upper else { continue }
+                sources.append(Source(
+                    audio: audio, asset: asset, shift: storyShift + audioStart - audioOffset, range: lower..<upper))
+            }
+        }
+
+        // No <audio> anywhere in the wrapper proves there is nothing to hear: a <video> carries
+        // picture only. This is the picture half of a detached clip.
+        guard foundAudio else {
+            clip.hasAudio = false
+            clip.skipReason = .noAudio
+            return
+        }
+        // Reasons on the wrapper itself — muted, retimed — hold whatever it contains.
+        guard clip.skipReason == nil else { return }
+
+        // The same asset usually appears twice, once per audio component (`dialogue-1`,
+        // `dialogue-2`); the lane nearest the clip is the first component.
+        let covering = sources
+            .filter { $0.range.contains(clip.start) }
+            .min { abs(Int($0.audio.attribute(forName: "lane")?.stringValue ?? "") ?? 0)
+                 < abs(Int($1.audio.attribute(forName: "lane")?.stringValue ?? "") ?? 0) }
+        guard let source = covering else {
+            clip.skipReason = .wrappedAudioUnreadable
+            return
+        }
+
+        clip.mediaURL = source.asset.mediaURL
+        clip.mediaBookmark = source.asset.mediaBookmark
+        clip.hasAudio = source.asset.hasAudio
+        clip.assetFrameDuration = source.asset.formatID.flatMap { resources.formats[$0] }
+        // `start + shift` is the asset time; minus the asset's origin it is a place in the file.
+        clip.assetStart = source.asset.start - source.shift
+        clip.audibleDuration = min(clip.duration, source.range.upperBound - clip.start)
+        clip.skipReason = Self.skipReason(for: source.audio, hasAudio: source.asset.hasAudio)
     }
 
     /// Points a multicam clip at the file its audio really comes from.

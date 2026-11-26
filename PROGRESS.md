@@ -3,7 +3,7 @@
 Running state of the project. Read this first after a break — it is meant to be enough on its own.
 Plan of record: [FCP_CAPTION_SPEC.md](FCP_CAPTION_SPEC.md). Working rules: [CLAUDE.md](CLAUDE.md).
 
-**Last updated:** 2026-11-04 · **M0–M3 and M5 are done. M4 is deferred by the user.**
+**Last updated:** 2026-11-25 · **M0–M3 and M5 are done. M4 is deferred by the user.**
 The extension runs in Final Cut Pro's sidebar and the whole round trip has been verified by hand:
 drag a project in, get Korean captions on the timeline, as captions or titles or both, styled.
 Signed, notarized and published from this Mac; GitHub only hosts the file.
@@ -462,6 +462,74 @@ security-scoped bookmark for the camera files, but the document FCP hands over o
 readable by the sandboxed extension. The individual §2h edge cases (an audio angle that starts
 later, the whole multicam from the browser) were not reported separately. Compound clips
 (`ref-clip` into a `<media><sequence>`) are still not read and most likely fail the same way.
+
+### Detached audio (2026-11-25, user's report)
+
+In a real project **no caption appeared from 7:53 to 13:44**, where only detached audio
+plays. Detaching audio in Final Cut Pro turns a clip into ref-less wrappers: the picture becomes a
+`<clip>` holding a bare `<video ref=…>`, the sound a connected `<clip lane="-1">` holding a `<gap>`
+with `<audio ref=…>` elements anchored to it. The reader looked for a file only in the clip's own
+`ref`, found none, and the pipeline skipped all sixteen wrappers (350 s of dialogue) as
+"클립의 원본 미디어 경로를 찾지 못했습니다".
+
+The reader now follows a ref-less `<clip>` into its own story elements (`gap`, `video`, `audio`)
+and the `<audio>` anchored to them, picks the one playing where the clip starts, and takes its
+asset's file, bookmark, format and timecode. Each layer's time is mapped (`t - offset + start`),
+not assumed — in the real export every `offset` equals its `start`, so the wrapper's time is the
+asset's. A wrapper with no `<audio>` at all — the picture half — is now `.noAudio` instead of a
+path error. Audio that does not cover the clip's start, or that has no `start` to map with, is
+`.wrappedAudioUnreadable`, with a Korean reason; neither was seen in the real project.
+
+The writer used to identify a clip by `ref` + `offset` alone, which cannot find a ref-less clip at
+all and can confuse two wrappers that share a parent-relative offset. It now also compares lane,
+`start` and `duration`, and refuses (`clipNotFound`) rather than guessing when that still leaves
+more than one.
+
+**First test in Final Cut Pro (2026-11-26): still no captions there.** The logs showed the reader
+fix working — all sixteen wrappers were transcribed from the right second of the file — and the
+re-exported project showed where they went: titles had been written to 21 connected clips (the
+detached audio, and ordinary synced clips on lane 1 too), and **every one was gone after import**,
+while the 106 on spine clips survived. Final Cut Pro keeps anchored items only on clips in a
+storyline and drops those anchored to a connected clip without a word. Across every real export in
+hand — over 900 anchored items — not one sits inside another anchored item.
+
+This means **connected clips have never been captioned in Final Cut Pro**, detached or not. The
+reader has found them since 2026-09-09 and the writer put their captions inside them, a valid
+document by the DTD that FCP silently drops. Now a connected clip's captions are attached to the
+clip it hangs from, in that clip's time (a connected clip's `offset` is where its `start` falls in
+its parent), with a title's `offset` on the parent's own format grid. They are kept inside the
+parent's span: in the real project 15 s of 801 s of connected clips overhang their parent, and a
+caption that would have to anchor outside it is dropped and counted as skipped rather than placed
+somewhere unverified.
+
+Open: when a parent is audible itself *and* a connected clip under it is (camera audio plus a synced
+mic, both unmuted), both are captioned onto the parent. Captions of one language already avoid each
+other; **titles do not**, so the same sentence can appear twice. Not seen in this project, where
+every parent of a detached clip is muted.
+
+Fixture `Fixtures/detached_audio.fcpxml` (FCPXML 1.15, validates against `FCPXMLv1_15.dtd`), tests
+in `DetachedAudioTests`. Run against the full source export: all 16 wrappers find the camera file,
+and writing a title for each of the 66 captionable clips writes 66, none inside a connected clip,
+in a document that validates.
+
+**Verified in Final Cut Pro on 2026-11-26** (user's report, `docs/MANUAL_TEST.md` §2i): with
+captions on the parent, the detached-audio stretch is captioned. The import warned once, "Invalid
+edit with no respective media" at `spine/clip[1]` — the project's first `<clip>`, a zero-length
+(`duration="0s"`) clip holding only a gap, already in the user's edit. FCP had dropped it on the
+earlier import as well, and the app writes nothing to it. Whether the captions line up with the
+speech was not reported separately.
+
+**Titles under a picture-in-picture did not show (2026-11-26, same test).** Where the detached
+picture was connected above its parent as a picture-in-picture on lane 1, the titles — also written
+to lane 1 of that parent — appeared in the timeline and never in the viewer. Captions keep lanes of
+their own (the reference export has a caption and a title both on lane 1), but a title shares its
+lanes with every connected clip on the same parent. Titles now go above the highest positive lane
+any non-caption anchored item uses on the parent; with nothing connected above, that is still lane
+1. Fixture extended with that parent, real FCP output like the rest. On the full source export, a
+title for each of the 66 captionable clips shares a lane with no overlapping item, and the document
+validates. **Verified in Final Cut Pro on 2026-11-26** (user's report): the titles under the
+picture-in-picture now show in the viewer. This also affected titles on any spine clip with b-roll
+connected above it, before any of today's changes; that case was not checked separately.
 
 ## Next
 
