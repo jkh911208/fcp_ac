@@ -117,12 +117,17 @@ Use a project with a multicam clip whose angles were synced from separate camera
 Use a project where a clip's audio was detached (**Clip ▸ Detach Audio**, ⌃⇧S) and then cut
 separately from its picture.
 
-- [ ] Dragging the project in captions the detached audio — no "원본 미디어 경로를 찾지 못했습니다"
+- [x] Dragging the project in captions the detached audio — no "원본 미디어 경로를 찾지 못했습니다"
+      (2026-11-26, user's report: captions appear in real FCP)
 - [ ] The captions line up with the speech in the detached audio, not drift by seconds
 - [ ] The picture half of the detached clip is not listed as a failure; at most it is named as a
       clip with no audio
-- [ ] After import the captions are on the timeline, sitting on the clip above the detached audio
+- [x] After import the captions are on the timeline, sitting on the clip above the detached audio
       (the first attempt wrote them inside the detached clip, and Final Cut Pro dropped every one)
+      (2026-11-26, user's report)
+- The import may warn "Invalid edit with no respective media" for a `<clip duration="0s">` holding
+  only a gap. That is a zero-length leftover already in the project, which FCP drops on any
+  re-import; the app does not write to it. Seen in the same project on both imports.
 - [ ] Captions and titles imported onto detached audio show no "not on an edit frame boundary"
       error
 

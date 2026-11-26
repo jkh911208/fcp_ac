@@ -510,7 +510,14 @@ every parent of a detached clip is muted.
 Fixture `Fixtures/detached_audio.fcpxml` (FCPXML 1.15, validates against `FCPXMLv1_15.dtd`), tests
 in `DetachedAudioTests`. Run against the full source export: all 16 wrappers find the camera file,
 and writing a title for each of the 66 captionable clips writes 66, none inside a connected clip,
-in a document that validates. **Not yet verified in Final Cut Pro** — `docs/MANUAL_TEST.md` §2i.
+in a document that validates.
+
+**Verified in Final Cut Pro on 2026-11-26** (user's report, `docs/MANUAL_TEST.md` §2i): with
+captions on the parent, the detached-audio stretch is captioned. The import warned once, "Invalid
+edit with no respective media" at `spine/clip[1]` — the project's first `<clip>`, a zero-length
+(`duration="0s"`) clip holding only a gap, already in the user's edit. FCP had dropped it on the
+earlier import as well, and the app writes nothing to it. Whether the captions line up with the
+speech was not reported separately.
 
 ## Next
 
